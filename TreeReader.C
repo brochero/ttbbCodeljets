@@ -92,6 +92,20 @@ void print_progress(int TreeEntries, Long64_t ievt)
   }  
 }
 
+
+//enum class btagUnc:unsigned int{CENTRAL,
+struct btagUnc{
+  enum:unsigned int{CENTRAL,
+      JES_UP, JES_DN,
+      LF_UP, LF_DN,
+      HF_UP, HF_DN,
+      HFSTAT1_UP, HFSTAT1_DN, HFSTAT2_UP, HFSTAT2_DN,
+      LFSTAT1_UP, LFSTAT1_DN, LFSTAT2_UP, LFSTAT2_DN,
+      CFERR1_UP, CFERR1_DN, CFERR2_UP, CFERR2_DN
+      };
+};
+
+
 int main(int argc, const char* argv[]){
 
   gErrorIgnoreLevel = kError;
@@ -105,8 +119,7 @@ int main(int argc, const char* argv[]){
   const char * _output   = 0;
   const char * _input    = 0;
   // TopTrees directory
-  //const char * _dir      = "/cms/home/brochero/CATTuples_Nov/v7-4-5/cattools/src/CATTools/CatAnalyzer/prod/Files_v7-4-5/";
-  const char * _dir      = "/afs/cern.ch/user/b/brochero/brochero_WorkArea/CATTuples_Jan16/Files_v7-4-6/";
+  const char * _dir      = "/afs/cern.ch/user/b/brochero/brochero_WorkArea/CATTuples_Feb16/Files_v7-6-1/";
   const char * _tr       = 0;
   const char * _idiso    = 0;
   const char * _ttbar_id = 0;
@@ -174,8 +187,7 @@ int main(int argc, const char* argv[]){
   TString IDISOUnc(_idiso);
   TString ttbar_id(_ttbar_id);
   
-  //TChain theTree("ttbarSingleLepton/vallot"); 
-  TChain theTree("ttbarSingleLepton/tree"); 
+  TChain theTree("ttbbLepJets/tree"); 
   
   std::cout << "---------------------------------------------------------------------------------" << std::endl;
   std::cout << "Signal: ";
@@ -189,15 +201,18 @@ int main(int argc, const char* argv[]){
   float MET,MET_Phi;
 
   float Lep_px, Lep_py, Lep_pz, Lep_E;
+  std::vector<float> *Lep_SF=0;
+
   std::vector<float> *Jet_px=0, *Jet_py=0, *Jet_pz=0, *Jet_E=0;
-  std::vector<float> *Jet_CSV=0, *Jet_SVM=0;
   std::vector<int>   *Jet_partonFlavour=0;
+  std::vector<float> *Jet_CSV=0;
+  std::vector<float> *Jet_SF_CSV=0;
 
   // GEN Info
   int  GenCat_ID;
   std::vector<int> *GenConeCat=0;
   float GenLep_pT;
-  std::vector<float> *GenJet_pT=0, *GenJet_Flavour=0;
+  std::vector<float> *GenJet_pT=0;
    
  /*********************************
            Tree Branches
@@ -219,28 +234,30 @@ int main(int argc, const char* argv[]){
   theTree.SetBranchAddress( "lepton_pz", &Lep_pz );
   theTree.SetBranchAddress( "lepton_E",  &Lep_E );
 
+  theTree.SetBranchAddress( "lepton_SF",  &Lep_SF );
+
   theTree.SetBranchAddress( "jet_px", &Jet_px );
   theTree.SetBranchAddress( "jet_py", &Jet_py );
   theTree.SetBranchAddress( "jet_pz", &Jet_pz );
   theTree.SetBranchAddress( "jet_E",  &Jet_E );
 
   theTree.SetBranchAddress( "jet_CSV",  &Jet_CSV );
-  theTree.SetBranchAddress( "jet_SVM",  &Jet_SVM );
+  theTree.SetBranchAddress( "jet_SF_CSV",  &Jet_SF_CSV );
   theTree.SetBranchAddress( "jet_partonFlavour",  &Jet_partonFlavour );
-
-
 
   // Number of Events and Weights (MC@NLO)
   TFile *fileEntries = NULL;
   fileEntries = TFile::Open(fdir + fname + ".root");
   TH1F *h_NumberEvt;
-  h_NumberEvt = (TH1F*)fileEntries->Get("ttbarSingleLepton/EventInfo");
+  h_NumberEvt = (TH1F*)fileEntries->Get("ttbbLepJets/EventInfo");
 
   float NTotal_Event, NTotal_Weight, nNorm_Event;
   NTotal_Event  = h_NumberEvt->GetBinContent(1);
   NTotal_Weight = h_NumberEvt->GetBinContent(2);
 
-  // MCatNLO Weights
+  /************************
+      MCatNLO Weights
+  *************************/
   if(fname.Contains("MCatNLO")){
     theTree.SetBranchAddress( "genweight", &GENWeight );
     nNorm_Event = NTotal_Weight;    
@@ -252,12 +269,10 @@ int main(int argc, const char* argv[]){
 
   // ttbar event categorization
   if(fname.Contains("ttbar") && !fname.Contains("Bkg")){
-
     theTree.SetBranchAddress("gencatid",     &GenCat_ID);
     theTree.SetBranchAddress("genconecatid", &GenConeCat);
     theTree.SetBranchAddress("genlepton_pT", &GenLep_pT);
     theTree.SetBranchAddress("genjet_pT",    &GenJet_pT);
-    //theTree.SetBranchAddress("genjet_Flavour", &GenJet_Flavour);// Filled Wrong
   }
 
   else GenCat_ID = 1;
@@ -277,8 +292,8 @@ int main(int argc, const char* argv[]){
 
   TH1F *hmT[4][2];
 
-  TH1F *hNJets[4][2], *hHT[4][2], *hNBtagJets[4][2], *hSVM_Total[4][2];
-  TH1F *hCSV[4][4][2], *hSVM[4][4][2], *hJetPt[4][4][2];
+  TH1F *hNJets[4][2], *hHT[4][2], *hNBtagJets[4][2];
+  TH1F *hCSV[4][4][2], *hJetPt[4][4][2];
   TH2F *h2DCSV_23Jet[4][2];
 
   TH1F *hSFpT[4][2], *hSFpTError[4][2];
@@ -350,9 +365,6 @@ int main(int argc, const char* argv[]){
       hHT[j][i]         = new TH1F("hHT_"+namech[i]+"_"+namecut[j],"H_{T} " + titlenamech[i],100,0,600);
       hHT[j][i]->GetXaxis()->SetTitle("HT[GeV]");      
 
-      hSVM_Total[j][i]  = new TH1F("hSVM_Total_"+namech[i]+"_"+namecut[j],"SVM " + titlenamech[i],20,0,8);
-      hSVM_Total[j][i]->GetXaxis()->SetTitle("SVM[GeV]");      
-
       /***************************
           SF(ID,ISO & Trigger)
       ***************************/
@@ -404,8 +416,6 @@ int main(int argc, const char* argv[]){
 	hCSV[ij][j][i]->GetXaxis()->SetTitle("CSVv2");      
 	hJetPt[ij][j][i] = new TH1F("hJetPt_" + jetn[ij] + "_" + namech[i] + "_" + namecut[j],"p_{T}^{Jet} " + jetn[ij] + " " + titlenamech[i],10,0,200);
 	hJetPt[ij][j][i]->GetXaxis()->SetTitle("p_{T}[GeV]");      
-	hSVM[ij][j][i] = new TH1F("hSVM_" + jetn[ij] + "_" + namech[i] + "_" + namecut[j],"SVM " + jetn[ij] + " " + titlenamech[i],20,0,8);
-	hSVM[ij][j][i]->GetXaxis()->SetTitle("SVM[GeV]");      
       }
 
       hEvtCatego[j][i]  = new TH1F("hEvtCatego_"+namech[i]+"_"+namecut[j],"ttbar Event Categorization " + titlenamech[i],4,-0.5,3.5);
@@ -491,7 +501,7 @@ int main(int argc, const char* argv[]){
   
   float NormWeight = 0.0;
   // NormWeight = Lumi*(1.0/N_Gen_events)*(Xsec)
-  NormWeight = SFLumi(fname, 2100, nNorm_Event);  
+  NormWeight = SFLumi(fname, 2170, nNorm_Event);  
 
   std::cout << "-----------------------                                 -------------------------" << std::endl;
   std::cout << "Number of Events     = " << nNorm_Event << std::endl;
@@ -576,6 +586,11 @@ int main(int argc, const char* argv[]){
     NJets      = 0;
     NBtagJets  = 0;
 
+    // b-tag SF
+    // From: https://twiki.cern.ch/twiki/bin/view/CMS/BTagShapeCalibration
+    btagUnc btagvar;
+    PUWeight = PUWeight * (*Jet_SF_CSV)[btagUnc::CENTRAL];
+
     for(int ijet=0; ijet < Jet_px->size(); ijet++){
       
       TLorentzVector jet;
@@ -587,12 +602,24 @@ int main(int argc, const char* argv[]){
 	JetIndex.push_back(ijet);
 	NJets++; // Number of jets
 	
+
+	/*******************************************
+                       b-tagging
+	*******************************************/    
 	bool btagDisc = false;
-	if (fname.Contains("Data")) btagDisc = fBTagSF->IsTagged((*Jet_CSV)[ijet], -999999, jet.Pt(), jet.Eta());
-	else btagDisc = fBTagSF->IsTagged((*Jet_CSV)[ijet], JetFlav, jet.Pt(), jet.Eta());
-	
+		
+	// OLD Method: 
 	// b-tagging WP from https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideBTagging
-	if(btagDisc){ // CSVM. Before: (*Jet_CSV)[ijet] > CSV_WP
+	// Not recommended for analysis with observables that depends ontagging.
+	// if (fname.Contains("Data")) btagDisc = fBTagSF->IsTagged((*Jet_CSV)[ijet], -999999, jet.Pt(), jet.Eta());
+	// else btagDisc = fBTagSF->IsTagged((*Jet_CSV)[ijet], JetFlav, jet.Pt(), jet.Eta());
+	
+	// New Method (Event SF from tth group)
+	// https://twiki.cern.ch/twiki/bin/view/CMS/BTagShapeCalibration
+
+	btagDisc = (*Jet_CSV)[ijet] > CSV_WP;
+
+	if(btagDisc){ 
 	  bJet.push_back(true);
 	  NBtagJets++; // Number of b-tagged jets
 	} // if(b-tag)
@@ -613,13 +640,13 @@ int main(int argc, const char* argv[]){
    Trigger,ID & ISO Scale Factors/bin(Pt,Eta)
   *******************************************/    
     std::vector<float> SF_ID_ISO_Tr;
-    
+
     if (fname.Contains("Data")){
-      SF_ID_ISO_Tr.push_back(1.0);//SF_ID_ISO_Tr    [0] 
-      SF_ID_ISO_Tr.push_back(1.0);//SF_ID_ISO       [1] 
-      SF_ID_ISO_Tr.push_back(1.0);//SF_ID_ISO_Error [2] 
-      SF_ID_ISO_Tr.push_back(1.0);//SF_Tr           [3] 
-      SF_ID_ISO_Tr.push_back(1.0);//SF_Tr_Error     [4] 
+      SF_ID_ISO_Tr.push_back(1.0); // SF_ID_ISO_Tr    [0] 
+      SF_ID_ISO_Tr.push_back(1.0); // SF_ID_ISO       [1] 
+      SF_ID_ISO_Tr.push_back(1.0); // SF_ID_ISO_Error [2] 
+      SF_ID_ISO_Tr.push_back(1.0); // SF_Tr           [3] 
+      SF_ID_ISO_Tr.push_back(1.0); // SF_Tr_Error     [4] 
     }
     
     else {
@@ -628,6 +655,9 @@ int main(int argc, const char* argv[]){
 		     hmuIDISOSF, hmuTriggerSF,
 		     heIDISOSF,  heTriggerSF);
       
+      // Easiest adaptation: Create in the same way the Lep_SF vector
+      // SF_ID_ISO_Tr = Lep_SF;
+
       if(_idiso_unc){
 	if     (IDISOUnc == "Up")   PUWeight = PUWeight * (SF_ID_ISO_Tr[1] + SF_ID_ISO_Tr[2]);	
 	else if(IDISOUnc == "Down") PUWeight = PUWeight * (SF_ID_ISO_Tr[1] - SF_ID_ISO_Tr[2]);	
@@ -653,7 +683,7 @@ int main(int argc, const char* argv[]){
 
     int                            cut = 0; // Single Lepton (from Tree)
     if(NJets > 5)                  cut = 1; // + 6 Jets 
-    if(NJets > 5 && NBtagJets > 1) cut = 2; // + 2 Jets
+    if(NJets > 5 && NBtagJets > 1) cut = 2; // + 2 b-tag
     if(NJets > 5 && NBtagJets > 3) cut = 3; // + 4 b-tag
 
     /***************************
@@ -738,9 +768,7 @@ int main(int argc, const char* argv[]){
       
       /*******************
         Fill Histograms
-      ******************/
-      // If is not a l+jets event using the Cone Categorization
-
+      *******************/
       hSFIDISO[icut][Channel]->Fill(SF_ID_ISO_Tr[1],PUWeight);
       hSFIDISOError[icut][Channel]->Fill(SF_ID_ISO_Tr[2],PUWeight);
       hSFTrigger[icut][Channel]->Fill(SF_ID_ISO_Tr[3],PUWeight);
@@ -752,13 +780,12 @@ int main(int argc, const char* argv[]){
       AccEvent[icut][Channel]++;
       EffEvent[icut][Channel]= EffEvent[icut][Channel] + PUWeight;
 
-
-      hPV[icut][Channel]->Fill(GoodPV,PUWeight);
-
       /******************
         Kinematic Var.
       ******************/
       
+      hPV[icut][Channel]->Fill(GoodPV,PUWeight);
+
       hMET[icut][Channel]->Fill(MET,PUWeight);
       hMET_Phi[icut][Channel]->Fill(fabs(MET_Phi),PUWeight);
       
@@ -778,7 +805,6 @@ int main(int argc, const char* argv[]){
       // CSV discriminant for 3rd and 4th Jet
       if(JetIndex.size() > 3)  h2DCSV_23Jet[icut][Channel]->Fill((*Jet_CSV)[JetIndex[2]], (*Jet_CSV)[JetIndex[3]], PUWeight);
 
-      float SVM = 0.0;
 
       for(int ijet=0; ijet < JetIndex.size(); ijet++){
 	TLorentzVector jet;
@@ -786,15 +812,9 @@ int main(int argc, const char* argv[]){
 	int JetFlav = (*Jet_partonFlavour)[JetIndex[ijet]];
 	bool IsbJet = bJet[ijet];
 
-	float JetSVM  = (*Jet_SVM)[JetIndex[ijet]];
-	if(JetSVM > SVM) SVM = JetSVM;
-	
-	//float JetCSV = (*Jet_CSV)[JetIndex[ijet]];
-
 	if (ijet < 4){
 	  hCSV  [ijet][icut][Channel]->Fill((*Jet_CSV)[JetIndex[ijet]], PUWeight);
 	  hJetPt[ijet][icut][Channel]->Fill(jet.Pt(), PUWeight);
-	  hSVM  [ijet][icut][Channel]->Fill(JetSVM, PUWeight);
 	}
 
 	if(JetFlav == 5){
@@ -810,8 +830,6 @@ int main(int argc, const char* argv[]){
 	  if((*Jet_CSV)[JetIndex[ijet]] > CSV_WP) h2DSFbtag_btag_l[icut][Channel]->Fill(jet.Pt(), fabs(jet.Eta()), PUWeight);  
 	}
       }//for(ijet)     
-
-      hSVM_Total[icut][Channel]->Fill(SVM, PUWeight); 
 
     }//for(icuts)     
     
@@ -1035,13 +1053,11 @@ int main(int argc, const char* argv[]){
       
       hNJets[j][i]->Write();
       hNBtagJets[j][i]->Write();            
-      hSVM_Total[j][i]->Write();            
       h2DCSV_23Jet[j][i]->Write();
       
       for(int ij=0; ij<4; ij++){
 	hCSV[ij][j][i]->Write();
 	hJetPt[ij][j][i]->Write();
-	hSVM[ij][j][i]->Write();
       }
       
       hSFpT[j][i]->Write();
