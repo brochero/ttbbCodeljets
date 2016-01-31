@@ -96,13 +96,15 @@ void print_progress(int TreeEntries, Long64_t ievt)
 //enum class btagUnc:unsigned int{CENTRAL,
 struct btagUnc{
   enum:unsigned int{CENTRAL,
-      JES_UP, JES_DN,
-      LF_UP, LF_DN,
-      HF_UP, HF_DN,
-      HFSTAT1_UP, HFSTAT1_DN, HFSTAT2_UP, HFSTAT2_DN,
-      LFSTAT1_UP, LFSTAT1_DN, LFSTAT2_UP, LFSTAT2_DN,
-      CFERR1_UP, CFERR1_DN, CFERR2_UP, CFERR2_DN
-      };
+      JES_UP,     JES_DN,
+      LF_UP,       LF_DN,
+      HF_UP,       HF_DN,
+      HFSTAT1_UP,  HFSTAT1_DN, 
+      HFSTAT2_UP,  HFSTAT2_DN,
+      LFSTAT1_UP,  LFSTAT1_DN, 
+      LFSTAT2_UP,  LFSTAT2_DN,
+      CFERR1_UP,   CFERR1_DN, 
+      CFERR2_UP,   CFERR2_DN};
 };
 
 
@@ -120,6 +122,7 @@ int main(int argc, const char* argv[]){
   const char * _input    = 0;
   // TopTrees directory
   const char * _dir      = "/afs/cern.ch/user/b/brochero/brochero_WorkArea/CATTuples_Feb16/Files_v7-6-1/";
+  const char * _syst_var = 0;
   const char * _tr       = 0;
   const char * _idiso    = 0;
   const char * _ttbar_id = 0;
@@ -149,6 +152,7 @@ int main(int argc, const char* argv[]){
 	}
 	if( strcmp(argv[i],"-s") == 0 ){
 	  _syst= true;
+	  _syst_var = argv[i+1];
 	}
 	if( strcmp(argv[i],"-tr") == 0 ){
 	  _tr_unc= true;
@@ -182,6 +186,7 @@ int main(int argc, const char* argv[]){
   // reassigning
   TString fname(_input);
   TString hname(_output);
+  TString syst_varname(_syst_var);
   TString fdir(_dir);
   TString TrUnc(_tr);
   TString IDISOUnc(_idiso);
@@ -207,6 +212,8 @@ int main(int argc, const char* argv[]){
   std::vector<int>   *Jet_partonFlavour=0;
   std::vector<float> *Jet_CSV=0;
   std::vector<float> *Jet_SF_CSV=0;
+  std::vector<float> *Jet_JER=0;
+  std::vector<float> *Jet_JES=0;
 
   // GEN Info
   int  GenCat_ID;
@@ -240,6 +247,9 @@ int main(int argc, const char* argv[]){
   theTree.SetBranchAddress( "jet_py", &Jet_py );
   theTree.SetBranchAddress( "jet_pz", &Jet_pz );
   theTree.SetBranchAddress( "jet_E",  &Jet_E );
+
+  theTree.SetBranchAddress( "jet_JES",  &Jet_JES );
+  theTree.SetBranchAddress( "jet_JER",  &Jet_JER );
 
   theTree.SetBranchAddress( "jet_CSV",  &Jet_CSV );
   theTree.SetBranchAddress( "jet_SF_CSV",  &Jet_SF_CSV );
@@ -501,7 +511,7 @@ int main(int argc, const char* argv[]){
   
   float NormWeight = 0.0;
   // NormWeight = Lumi*(1.0/N_Gen_events)*(Xsec)
-  NormWeight = SFLumi(fname, 2170, nNorm_Event);  
+  NormWeight = SFLumi(fname, 2260, nNorm_Event);  
 
   std::cout << "-----------------------                                 -------------------------" << std::endl;
   std::cout << "Number of Events     = " << nNorm_Event << std::endl;
@@ -586,22 +596,30 @@ int main(int argc, const char* argv[]){
     NJets      = 0;
     NBtagJets  = 0;
 
-    // b-tag SF
+    // Global SF_b-tag
     // From: https://twiki.cern.ch/twiki/bin/view/CMS/BTagShapeCalibration
     btagUnc btagvar;
-    PUWeight = PUWeight * (*Jet_SF_CSV)[btagUnc::CENTRAL];
+    if (!fname.Contains("Data")) PUWeight = PUWeight * (*Jet_SF_CSV)[btagUnc::CENTRAL];
 
     for(int ijet=0; ijet < Jet_px->size(); ijet++){
       
       TLorentzVector jet;
       jet.SetPxPyPzE((*Jet_px)[ijet],(*Jet_py)[ijet],(*Jet_pz)[ijet],(*Jet_E)[ijet]);
-      int JetFlav = (*Jet_partonFlavour)[ijet];      
+      float jet_pT = jet.Pt(); 
+      int JetFlav  = (*Jet_partonFlavour)[ijet];      
 
-      if(jet.Pt()>25){ // Jet pT > 30GeV
+      if(_syst){
+	if(syst_varname.Contains("JES")){
+	  jet_pT = jet_pT*(*Jet_JES)[ijet]
+	}
+	if(syst_varname.Contains("JER")){
+	}
+      }
+
+      if(jet_pT>25){ // Jet pT > 30GeV
 	
 	JetIndex.push_back(ijet);
 	NJets++; // Number of jets
-	
 
 	/*******************************************
                        b-tagging
@@ -616,7 +634,6 @@ int main(int argc, const char* argv[]){
 	
 	// New Method (Event SF from tth group)
 	// https://twiki.cern.ch/twiki/bin/view/CMS/BTagShapeCalibration
-
 	btagDisc = (*Jet_CSV)[ijet] > CSV_WP;
 
 	if(btagDisc){ 
@@ -659,14 +676,14 @@ int main(int argc, const char* argv[]){
       // SF_ID_ISO_Tr = Lep_SF;
 
       if(_idiso_unc){
-	if     (IDISOUnc == "Up")   PUWeight = PUWeight * (SF_ID_ISO_Tr[1] + SF_ID_ISO_Tr[2]);	
-	else if(IDISOUnc == "Down") PUWeight = PUWeight * (SF_ID_ISO_Tr[1] - SF_ID_ISO_Tr[2]);	
+	if     (IDISOUnc == "Up")   PUWeight = PUWeight * (SF_ID_ISO_Tr[1] + SF_ID_ISO_Tr[2]);
+	else if(IDISOUnc == "Down") PUWeight = PUWeight * (SF_ID_ISO_Tr[1] - SF_ID_ISO_Tr[2]);
 	else if(IDISOUnc == "Nom")  PUWeight = PUWeight * (SF_ID_ISO_Tr[1]);
       } // if(_idiso_unc)
       
       else if(_tr_unc){
-	if     (TrUnc=="Up")   PUWeight=PUWeight*(SF_ID_ISO_Tr[3] + SF_ID_ISO_Tr[4]);			
-	else if(TrUnc=="Down") PUWeight=PUWeight*(SF_ID_ISO_Tr[3] - SF_ID_ISO_Tr[4]);		
+	if     (TrUnc=="Up")   PUWeight=PUWeight*(SF_ID_ISO_Tr[3] + SF_ID_ISO_Tr[4]);
+	else if(TrUnc=="Down") PUWeight=PUWeight*(SF_ID_ISO_Tr[3] - SF_ID_ISO_Tr[4]);
 	else if(TrUnc=="Nom")  PUWeight=PUWeight*(SF_ID_ISO_Tr[3]);	
       }// if(_tr_unc) 
       
