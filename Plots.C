@@ -271,7 +271,7 @@ void Plots(TString plots="4Jets", TString sys="", bool ttbb=false, bool LogScale
 
       // Produce enough vertical space for the legend 
       float MaxHisto;
-      if(LogScale) MaxHisto = 18.0;
+      if(LogScale) MaxHisto = 100.0;
       else MaxHisto = 1.7;
       float maxh = Data[h].hist[ch]->GetMaximum();
       if(maxh < Stack[h].mc[ch]->GetMaximum()) maxh = Stack[h].mc[ch]->GetMaximum();
@@ -417,6 +417,7 @@ void Plots(TString plots="4Jets", TString sys="", bool ttbb=false, bool LogScale
       Ratio->GetYaxis()->SetTitleOffset(0.45);
       Ratio->GetYaxis()->SetTitleSize(0.16);
       Ratio->GetYaxis()->SetLabelSize(0.15);
+      Ratio->GetYaxis()->SetNdivisions(402);
       Ratio->GetXaxis()->SetNdivisions(509); //(402)
       Ratio->GetXaxis()->SetTitleOffset(1.1);
       Ratio->GetXaxis()->SetLabelSize(0.20);

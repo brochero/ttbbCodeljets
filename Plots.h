@@ -43,10 +43,5 @@ std::vector<histos> addstack       (std::vector<histos> stack_0, std::vector<his
  Files and Directories
 ************************/
 TString dirnameIn= "TopResults/";
-//TString fl  = "hSF-FinalSel-v0_Tree_LepJets_v7-4-6_SVM_Spring15-bx25_2182pb-1";  
-//TString fl  = "hSF-FinalAN-v0_Tree_LepJets_v7-4-6_NewOrder_Spring15-bx25_2182pb-1";  
-//TString fl  = "hSF-ANFix-v0_Tree_LepJets_v7-4-6_NewOrder_Spring15-bx25_2182pb-1";  
-//TString fl  = "hSF-newCAT-v0_Tree_LepJets_v7-4-6_NewOrder_Spring15-bx25_2182pb-1";  
-//TString fl  = "hSF-newCAT-pTj25-v1_Tree_LepJets_v7-4-6_NewOrder_Spring15-bx25_2182pb-1";  
-TString fl  = "hSF-ChFixed-v0_Tree_LepJets_v7-4-6_NewOrder_Spring15-bx25_2182pb-1";  
+TString fl  = "hSF-Lumi2260-v1_Tree_LepJets_v7-6-1_NewSF_btag_Spring15-bx25_2170pb-1";  
 

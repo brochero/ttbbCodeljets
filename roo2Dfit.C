@@ -28,7 +28,7 @@ void roo2Dfit(){
 
   // Add Backgrounds
   InFile[Bkgtt]    = LoadSample("_ttbar_PowhegPythiaBkgtt.root"); // ttbarBkg + tt
-  InFile[BkgOther] = LoadSample("_BkgOther.root");
+  InFile[BkgOther] = LoadSample("_BkgOther.root"); 
   InFile[BkgFull]  = LoadSample("_BkgFull.root"); // BkgOther + Bkgtt
 
 
@@ -81,13 +81,13 @@ void roo2Dfit(){
     RooRealVar CSV3("CSV3", "CSV for Jet 4", InFile[ttbb].hist1D[0][0]->GetXaxis()->GetXmin(), InFile[ttbb].hist1D[0][0]->GetXaxis()->GetXmax());  
     
     // Ratio at RECO level
-    RooRealVar RECO_ratio_ttbb  ("RECO_ratio_ttbb",   "RECO ratio ttbb/ttjj",   ratio[ttbb],   ratio[ttbb],    ratio[ttbb]);
-    RooRealVar RECO_ratio_ttb   ("RECO_ratio_ttb",    "RECO ratio ttb/ttjj",    ratio[ttb],    ratio[ttb],     ratio[ttb]);
+    RooRealVar RECO_ratio_ttbb  ("RECO_ratio_ttbb",   "RECO ratio ttbb/ttjj",   ratio[ttbb]);//,   ratio[ttbb],    ratio[ttbb]);
+    RooRealVar RECO_ratio_ttb   ("RECO_ratio_ttb",    "RECO ratio ttb/ttjj",    ratio[ttb]);//,    ratio[ttb],     ratio[ttb]);
     RooRealVar RECO_ratio_ttcc  ("RECO_ratio_ttcc",   "RECO ratio ttcc/ttjj",   ratio[ttcc],   ratio[ttcc],    ratio[ttcc]);
     RooRealVar RECO_ratio_ttccLF("RECO_ratio_ttccLF", "RECO ratio ttccLF/ttjj", ratio[ttccLF], ratio[ttccLF] , ratio[ttccLF]);
 
     // Signal: Fitted ratios
-    RooRealVar  fit_ratio_ttbb  ("fit_ratio_ttbb",   "FITTED ratio ttbb/ttjj",   ratio[ttbb],   0.0, 0.03); 
+    RooRealVar  fit_ratio_ttbb  ("fit_ratio_ttbb",   "FITTED ratio ttbb/ttjj",   ratio[ttbb],   0.0, 0.1); 
     RooRealVar  fit_ratio_ttb   ("fit_ratio_ttb",    "FITTED ratio ttb/ttjj",    ratio[ttb],    0.0, 1.0); 
     RooRealVar  fit_ratio_ttccLF("fit_ratio_ttccLF", "FITTED ratio ttccLF/ttjj", ratio[ttccLF], 0.0, 1.0); 
     RooRealVar  fit_ratio_ttjj  ("fit_ratio_ttjj",   "FITTED ratio ttjj/Total",  0.8,           0.0, 1.0); 
@@ -95,7 +95,7 @@ void roo2Dfit(){
     RooFormulaVar fit_ratio_ttbb_con("fit_ratio_ttbb_con", "FITTED ratio ttbb/ttjj contrained", "@0/@1*@2", RooArgList(fit_ratio_ttbb, RECO_ratio_ttbb, RECO_ratio_ttb));
 
     // Normalization Constant
-    RooRealVar k("k", "Normalization factor", 0.9, 0.85, 0.95);
+    RooRealVar k("k", "Normalization factor", 0.95, 0.90, 1.1);
 
     // Background
     RooRealVar  fit_ratio_Bkgtt   ("fit_ratio_Bkgtt",    "FITTED ratio bkgtt/FullBkg",    0.4, 0.0, 1.0); 
