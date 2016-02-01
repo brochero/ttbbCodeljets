@@ -1,6 +1,6 @@
 #include "Plots.h"
 
-void Plots(TString plots="4Jets", TString sys="", bool ttbb=false, bool LogScale=false){
+void Plots(TString plots="2btag", bool LogScale=false){
   
   /****************
         Style
@@ -57,31 +57,32 @@ void Plots(TString plots="4Jets", TString sys="", bool ttbb=false, bool LogScale
   ****************/ 
   // ttbar categorization 
   std::vector<histos> ttbar_0;
-  if(ttbb){
-    ttbar_0 = loadhistograms(plots, files + "_ttbar_PowhegPythiatt");
-    setuphistograms(ttbar_0, col_tt);
-    std::vector<histos> ttbar_0_ttbb;
-    ttbar_0_ttbb = loadhistograms(plots, files + "_ttbar_PowhegPythiattbb");
-    setuphistograms(ttbar_0_ttbb, col_ttbb);
-    std::vector<histos> ttbar_0_ttb;
-    ttbar_0_ttb = loadhistograms(plots, files + "_ttbar_PowhegPythiattb");
-    setuphistograms(ttbar_0_ttb, col_ttb);
-    std::vector<histos> ttbar_0_ttcc;
-    ttbar_0_ttcc = loadhistograms(plots, files + "_ttbar_PowhegPythiattcc");
-    setuphistograms(ttbar_0_ttcc, col_ttcc);
-    //std::vector<histos> ttbar_0_ttc;
-    //ttbar_0_ttc = loadhistograms(plots, files + "_ttbar_PowhegPythiattc");
-    //setuphistograms(ttbar_0_ttc, col_ttc);
-    std::vector<histos> ttbar_0_ttLF;
-    ttbar_0_ttLF = loadhistograms(plots, files + "_ttbar_PowhegPythiattLF");
-    setuphistograms(ttbar_0_ttLF, col_ttLF);
-  }
-  else{
-    ttbar_0 = loadhistograms(plots, files + "_ttbar_PowhegPythia");
-    setuphistograms(ttbar_0, col_tt);
-  }
+  ttbar_0 = loadhistograms(plots, files + "_ttbar_PowhegPythiatt");
+  setuphistograms(ttbar_0, col_tt);
+  std::vector<histos> ttbar_0_ttbb;
+  ttbar_0_ttbb = loadhistograms(plots, files + "_ttbar_PowhegPythiattbb");
+  setuphistograms(ttbar_0_ttbb, col_ttbb);
+  std::vector<histos> ttbar_0_ttb;
+  ttbar_0_ttb = loadhistograms(plots, files + "_ttbar_PowhegPythiattb");
+  setuphistograms(ttbar_0_ttb, col_ttb);
+  std::vector<histos> ttbar_0_ttcc;
+  ttbar_0_ttcc = loadhistograms(plots, files + "_ttbar_PowhegPythiattcc");
+  setuphistograms(ttbar_0_ttcc, col_ttcc);
+  //std::vector<histos> ttbar_0_ttc;
+  //ttbar_0_ttc = loadhistograms(plots, files + "_ttbar_PowhegPythiattc");
+  //setuphistograms(ttbar_0_ttc, col_ttc);
+  std::vector<histos> ttbar_0_ttLF;
+  ttbar_0_ttLF = loadhistograms(plots, files + "_ttbar_PowhegPythiattLF");
+  setuphistograms(ttbar_0_ttLF, col_ttLF);
+  
+  // Systematic Uncertainty
+  std::vector<histos> ttbar_syst;
+  ttbar_syst = loadhistograms(plots, files + "_ttbar_PowhegPythiaAllSyst");
+  setuphistograms(ttbar_syst, col_tt);
 
-
+  /****************
+     Other ttbar
+  ****************/ 
   std::vector<histos> ttbar_1;
   ttbar_1 = loadhistograms(plots, files + "_ttbar_MCatNLOPythia");
   setuphistograms(ttbar_1, kRed+2);
@@ -89,6 +90,16 @@ void Plots(TString plots="4Jets", TString sys="", bool ttbb=false, bool LogScale
   std::vector<histos> ttbar_2;
   ttbar_2 = loadhistograms(plots, files + "_ttbar_MadgraphPythia");
   setuphistograms(ttbar_2, kRed+3);
+
+  /****************
+     ttbar Bkg
+  ****************/ 
+  std::vector<histos> ttbar_bkg;
+  ttbar_bkg = loadhistograms(plots, files + "_ttbar_PowhegPythiaBkg");
+  setuphistograms(ttbar_bkg, col_ttbarBkg);
+  std::vector<histos> ttOther;
+  ttOther = addhistograms(ttbar_bkg, ttbar_0);
+
 
   /****************
        Z+Jets
@@ -135,12 +146,6 @@ void Plots(TString plots="4Jets", TString sys="", bool ttbb=false, bool LogScale
   WJets = loadhistograms(plots, files + "_WJets_MCatNLO");
   setuphistograms(WJets, col_WJets);
 
-  /****************
-     ttbar Bkg
-  ****************/ 
-  std::vector<histos> ttbar_bkg;
-  ttbar_bkg = loadhistograms(plots, files + "_ttbar_PowhegPythiaBkg");
-  setuphistograms(ttbar_bkg, col_ttbarBkg);
 
   /****************
         QCD
@@ -200,25 +205,27 @@ void Plots(TString plots="4Jets", TString sys="", bool ttbb=false, bool LogScale
 
   //-------------------------------------------------------
   // Stack Different Order
-  if (ttbb){
-    Stack = addstack(Stack, ttbar_0_ttbb);
-    Stack = addstack(Stack, ttbar_0_ttb);
-    Stack = addstack(Stack, ttbar_0_ttcc);
-    //Stack = addstack(Stack, ttbar_0_ttc);
-    Stack = addstack(Stack, ttbar_0_ttLF);
-  }
-  Stack = addstack(Stack, ttbar_0);
+  Stack = addstack(Stack, ttbar_0_ttbb);
+  Stack = addstack(Stack, ttbar_0_ttb);
+  Stack = addstack(Stack, ttbar_0_ttcc);
+  //Stack = addstack(Stack, ttbar_0_ttc);
+  Stack = addstack(Stack, ttbar_0_ttLF);
+  Stack = addstack(Stack, ttOther);
   Stack = addstack(Stack, WJets);
   Stack = addstack(Stack, QCD);
   Stack = addstack(Stack, Single_top);
   Stack = addstack(Stack, VV);
-  Stack = addstack(Stack, ttbar_bkg);
+  //Stack = addstack(Stack, ttbar_bkg);
   Stack = addstack(Stack, ZJets);
-
+  //-------------------------------------------------------
   //-------------------------------------------------------
   // other ttbar Generators
   ttbar_1 = addhistograms(ttbar_1, Stack_bkg);
   ttbar_2 = addhistograms(ttbar_2, Stack_bkg);
+  //-------------------------------------------------------
+  //-------------------------------------------------------
+  // Systematic Uncertainties
+  ttbar_syst = addhistograms(ttbar_syst, Stack_bkg);
 
   
   /****************
@@ -280,7 +287,8 @@ void Plots(TString plots="4Jets", TString sys="", bool ttbb=false, bool LogScale
       
       //-------------------------------------------------------
       // Band error
-      TGraphErrors *thegraph = new TGraphErrors(Stack[h].hist[ch]);
+      TGraphErrors *thegraph = new TGraphErrors(ttbar_syst[h].hist[ch]);
+      //TGraphErrors *thegraph = new TGraphErrors(Stack[h].hist[ch]);
       thegraph->SetName("thegraph");
       thegraph->SetFillStyle(1001);
       thegraph->SetFillColor(chatch);
@@ -322,23 +330,21 @@ void Plots(TString plots="4Jets", TString sys="", bool ttbb=false, bool LogScale
       leg->SetNColumns(2);
 
       leg->AddEntry(Data[h].hist[ch],"Data","PL");
-      if(ttbb){
-	leg->AddEntry(ttbar_0[h].hist[ch],"t#bar{t}+other","F");
-	leg->AddEntry(ttbar_0_ttLF[h].hist[ch],"t#bar{t}+LF","F");
-	//leg->AddEntry(ttbar_0_ttc[h].hist[ch],"t#bar{t}+c","F");
-	leg->AddEntry(ttbar_0_ttcc[h].hist[ch],"t#bar{t}+cc","F");
-	leg->AddEntry(ttbar_0_ttb[h].hist[ch],"t#bar{t}+b","F");
-	leg->AddEntry(ttbar_0_ttbb[h].hist[ch],"t#bar{t}+bb","F");
-      }
-      else leg->AddEntry(ttbar_0[h].hist[ch],"t#bar{t} Signal","F");
       leg->AddEntry(ZJets[h].hist[ch],"Z+Jets","F");
-      leg->AddEntry(ttbar_bkg[h].hist[ch],"t#bar{t} Bkg","F");
+      //leg->AddEntry(ttbar_bkg[h].hist[ch],"t#bar{t} Bkg","F");
       leg->AddEntry(VV[h].hist[ch],"VV","F");
       leg->AddEntry(Single_top[h].hist[ch],"Single t","F");
       leg->AddEntry(QCD[h].hist[ch],"QCD","F");
       leg->AddEntry(WJets[h].hist[ch],"W+Jets","F");
-      leg->AddEntry((TObject*)0,"","");
-      leg->AddEntry("thegraph","Uncertainty","F");
+      leg->AddEntry(ttOther[h].hist[ch],"t#bar{t}+other","F");
+      leg->AddEntry(ttbar_0_ttLF[h].hist[ch],"t#bar{t}+LF","F");
+      //leg->AddEntry(ttbar_0_ttc[h].hist[ch],"t#bar{t}+c","F");
+      leg->AddEntry(ttbar_0_ttcc[h].hist[ch],"t#bar{t}+cc","F");
+      leg->AddEntry(ttbar_0_ttb[h].hist[ch],"t#bar{t}+b","F");
+      leg->AddEntry(ttbar_0_ttbb[h].hist[ch],"t#bar{t}+bb","F");
+      //leg->AddEntry((TObject*)0,"","");
+      //leg->AddEntry("thegraph","Uncertainty","F");
+      leg->AddEntry("thegraph","Total Unc.","F");
       leg->AddEntry((TObject*)0,"","");
       leg->AddEntry(ttbar_1[h].hist[ch],"MC@NLO","L");
       leg->AddEntry((TObject*)0,"","");
@@ -396,7 +402,8 @@ void Plots(TString plots="4Jets", TString sys="", bool ttbb=false, bool LogScale
 
       TH1F *RatioSyst;
       RatioSyst = (TH1F*)Data[h].hist[ch]->Clone();
-      RatioSyst->Divide(Stack[h].hist[ch]); // Should be the histogram with the Total Syst. Unc.
+      RatioSyst->Divide(ttbar_syst[h].hist[ch]); // Should be the histogram with the Total Syst. Unc.
+      //RatioSyst->Divide(Stack[h].hist[ch]); // Should be the histogram with the Total Syst. Unc.
       std::vector<double> ratioContent;
       for(unsigned int b_r = 1; b_r <= RatioSyst->GetNbinsX(); b_r++){
 	RatioSyst->SetBinContent(b_r,1.0);
@@ -465,14 +472,8 @@ void Plots(TString plots="4Jets", TString sys="", bool ttbb=false, bool LogScale
       else dirfigname_log = "";
       TString dirfigname_pdf;
       TString dirfigname_png;
-      if(ttbb){
-	dirfigname_pdf = dirnameIn + "figures_" + fl + "/ttbb/pdf" + dirfigname_log + "/";
-	dirfigname_png = dirnameIn + "figures_" + fl + "/ttbb/png" + dirfigname_log + "/";
-      }
-      else {
-	dirfigname_pdf = dirnameIn + "figures_" + fl + "/pdf" + dirfigname_log + "/";
-	dirfigname_png = dirnameIn + "figures_" + fl + "/png" + dirfigname_log + "/";
-      }
+      dirfigname_pdf = dirnameIn + "figures_" + fl + "/ttbb/pdf" + dirfigname_log + "/";
+      dirfigname_png = dirnameIn + "figures_" + fl + "/ttbb/png" + dirfigname_log + "/";
       // make a dir if it does not exist!!
       gSystem->mkdir(dirfigname_pdf,       kTRUE);
       histocanvas->SaveAs(dirfigname_pdf + WJets[h].hist[ch]->GetName() + ".pdf");
