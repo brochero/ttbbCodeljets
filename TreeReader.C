@@ -212,8 +212,8 @@ int main(int argc, const char* argv[]){
   std::vector<int>   *Jet_partonFlavour=0;
   std::vector<float> *Jet_CSV=0;
   std::vector<float> *Jet_SF_CSV=0;
-  std::vector<float> *Jet_JER=0;
-  std::vector<float> *Jet_JES=0;
+  std::vector<float> *Jet_JER_Up=0, *Jet_JER_Nom=0, *Jet_JER_Down=0;
+  std::vector<float> *Jet_JES_Up=0, *Jet_JES_Down=0;
 
   // GEN Info
   int  GenCat_ID;
@@ -248,8 +248,12 @@ int main(int argc, const char* argv[]){
   theTree.SetBranchAddress( "jet_pz", &Jet_pz );
   theTree.SetBranchAddress( "jet_E",  &Jet_E );
 
-  theTree.SetBranchAddress( "jet_JES",  &Jet_JES );
-  theTree.SetBranchAddress( "jet_JER",  &Jet_JER );
+  theTree.SetBranchAddress( "jet_JES_Up",  &Jet_JES_Up );
+  theTree.SetBranchAddress( "jet_JES_Down",  &Jet_JES_Down );
+
+  theTree.SetBranchAddress( "jet_JER_Up",  &Jet_JER_Up );
+  theTree.SetBranchAddress( "jet_JER_Nom",  &Jet_JER_Nom );
+  theTree.SetBranchAddress( "jet_JER_Down",  &Jet_JER_Down );
 
   theTree.SetBranchAddress( "jet_CSV",  &Jet_CSV );
   theTree.SetBranchAddress( "jet_SF_CSV",  &Jet_SF_CSV );
@@ -303,12 +307,13 @@ int main(int argc, const char* argv[]){
   TH1F *hmT[4][2];
 
   TH1F *hNJets[4][2], *hHT[4][2], *hNBtagJets[4][2];
-  TH1F *hCSV[4][4][2], *hJetPt[4][4][2];
+  TH1F *hCSV[4][4][2], *hJetPt[4][4][2], *hJetpTUncVar[4][4][2];
   TH2F *h2DCSV_23Jet[4][2];
 
   TH1F *hSFpT[4][2], *hSFpTError[4][2];
   TH1F *hSFIDISO[4][2], *hSFIDISOError[4][2];
   TH1F *hSFTrigger[4][2], *hSFTriggerError[4][2];
+  TH1F *hSFbtag_Global[4][2], *hSFbtag_Global_var[4][2];
   TH2F *h2DSFbtag_b[4][2], *h2DSFbtag_c[4][2], *h2DSFbtag_l[4][2], *h2DSFbtag_btag_b[4][2], *h2DSFbtag_btag_c[4][2], *h2DSFbtag_btag_l[4][2]; 
 
   TH1F *hEvtCatego[4][2];
@@ -387,6 +392,9 @@ int main(int argc, const char* argv[]){
       /***************************
               SF(b-tag)
       ***************************/
+      hSFbtag_Global[j][i]     = new TH1F("hSFbtag_Global_"+namech[i]+"_"+namecut[j], "Global SF_{b-tag} " + titlenamech[i],40.0, 0.0, 4.0);
+      hSFbtag_Global_var[j][i] = new TH1F("hSFbtag_Global_var_"+namech[i]+"_"+namecut[j], "Global #Delta SF_{b-tag} " + titlenamech[i],20.0, 0.0, 1.0);
+
       h2DSFbtag_b[j][i]    = new TH2F("hSFbtag_b_"+namech[i]+"_"+namecut[j], "N^{b}(p_{T} vs #eta) " + titlenamech[i],7,0.0,140.0,4,0.0,2.4);
       h2DSFbtag_b[j][i]->GetXaxis()->SetTitle("p_{T}[GeV]");
       h2DSFbtag_b[j][i]->GetYaxis()->SetTitle("#eta");
@@ -426,6 +434,8 @@ int main(int argc, const char* argv[]){
 	hCSV[ij][j][i]->GetXaxis()->SetTitle("CSVv2");      
 	hJetPt[ij][j][i] = new TH1F("hJetPt_" + jetn[ij] + "_" + namech[i] + "_" + namecut[j],"p_{T}^{Jet} " + jetn[ij] + " " + titlenamech[i],10,0,200);
 	hJetPt[ij][j][i]->GetXaxis()->SetTitle("p_{T}[GeV]");      
+
+	hJetpTUncVar[ij][j][i] = new TH1F("hJetpTUncVar_" + jetn[ij] + "_" + namech[i] + "_" + namecut[j], "#Delta pT^{Jet} " + jetn[ij] + " " + titlenamech[i], 20.0, 0.0, 2.0);
       }
 
       hEvtCatego[j][i]  = new TH1F("hEvtCatego_"+namech[i]+"_"+namecut[j],"ttbar Event Categorization " + titlenamech[i],4,-0.5,3.5);
@@ -487,6 +497,9 @@ int main(int argc, const char* argv[]){
     else if(TrUnc=="Down") fname += "_SYS_Trigger_Down";
     else if(TrUnc=="Nom")  fname += "_SYS_Trigger_Nom";
   }// if(_tr_unc) 
+
+  // Jet uncertainties (btag, JES and JER)
+  if(_syst) fname += "_SYS_" + syst_varname;
 
 
   // Number de events for <pT Reweight>
@@ -556,11 +569,11 @@ int main(int argc, const char* argv[]){
   BTagSFUtil *fBTagSF;   //The BTag SF utility
   BTagSFUtil *fBTagSFT;   //The BTag SF utility
   int btagSysPar=0;
-  //float CSV_WP = 0.605; // Loose
+  // New WP for 76X: https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation76X
   fBTagSF = new BTagSFUtil("CSV", "Medium", btagSysPar); 
-  float CSV_WP = 0.890; // Medium
+  float CSV_WP = 0.800; // Medium
   //fBTagSF = new BTagSFUtil("CSV", "Tight", btagSysPar); 
-  //float CSV_WP = 0.970; // Tight
+  //float CSV_WP = 0.935; // Tight
   
   /********************************
              Event Loop
@@ -598,8 +611,24 @@ int main(int argc, const char* argv[]){
 
     // Global SF_b-tag
     // From: https://twiki.cern.ch/twiki/bin/view/CMS/BTagShapeCalibration
-    btagUnc btagvar;
-    if (!fname.Contains("Data")) PUWeight = PUWeight * (*Jet_SF_CSV)[btagUnc::CENTRAL];
+    //btagUnc btagvar;
+    float btagUnc = 0.0;
+    if (!fname.Contains("Data")){
+      if(_syst && syst_varname.Contains("btag")){
+	// Add in quadrature all the syst. components  
+	if (syst_varname.Contains("btag_Up")) {
+	  for (int ssup = 1; ssup<19; ssup+=2) btagUnc = (*Jet_SF_CSV)[ssup] * (*Jet_SF_CSV)[ssup];
+	}
+	if (syst_varname.Contains("btag_Down")){
+	  for (int ssdown = 2; ssdown<19; ssdown+=2) btagUnc = (*Jet_SF_CSV)[ssdown] * (*Jet_SF_CSV)[ssdown];
+	}
+	btagUnc = sqrt(btagUnc);
+	PUWeight = PUWeight * ((*Jet_SF_CSV)[btagUnc::CENTRAL] + btagUnc);
+      } // if(_syst && btag)
+      else {
+	PUWeight = PUWeight * (*Jet_SF_CSV)[btagUnc::CENTRAL];
+      }
+    }// if(!data)
 
     for(int ijet=0; ijet < Jet_px->size(); ijet++){
       
@@ -608,12 +637,24 @@ int main(int argc, const char* argv[]){
       float jet_pT = jet.Pt(); 
       int JetFlav  = (*Jet_partonFlavour)[ijet];      
 
+      float JetSystVar = 1.0;
       if(_syst){
-	if(syst_varname.Contains("JES")){
-	  jet_pT = jet_pT*(*Jet_JES)[ijet]
+	if(syst_varname.Contains("JES_Up")){
+	  JetSystVar = (*Jet_JES_Up)[ijet];
 	}
-	if(syst_varname.Contains("JER")){
+	else if(syst_varname.Contains("JES_Down")){
+	  JetSystVar = (*Jet_JES_Down)[ijet];
 	}
+	else if(syst_varname.Contains("JER_Up")){
+	  JetSystVar = (*Jet_JER_Up)[ijet];
+	}
+	else if(syst_varname.Contains("JER_Nom")){
+	  JetSystVar = (*Jet_JER_Nom)[ijet];
+	}
+	else if(syst_varname.Contains("JER_Down")){
+	  JetSystVar = (*Jet_JER_Down)[ijet];
+	}
+	jet_pT = jet_pT*JetSystVar;
       }
 
       if(jet_pT>25){ // Jet pT > 30GeV
@@ -815,7 +856,9 @@ int main(int argc, const char* argv[]){
       /******************
           Jets Var.
       ******************/
-
+      hSFbtag_Global[icut][Channel]->Fill((*Jet_SF_CSV)[btagUnc::CENTRAL], PUWeight);
+      hSFbtag_Global_var[icut][Channel]->Fill(btagUnc, PUWeight);
+      
       hNJets[icut][Channel]->Fill(NJets,PUWeight); 
       hNBtagJets[icut][Channel]->Fill(NBtagJets,PUWeight);
 
@@ -1072,6 +1115,9 @@ int main(int argc, const char* argv[]){
       hNBtagJets[j][i]->Write();            
       h2DCSV_23Jet[j][i]->Write();
       
+      hSFbtag_Global[j][i]->Write();
+      hSFbtag_Global_var[j][i]->Write();
+
       for(int ij=0; ij<4; ij++){
 	hCSV[ij][j][i]->Write();
 	hJetPt[ij][j][i]->Write();
