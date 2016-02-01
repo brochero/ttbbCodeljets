@@ -39,9 +39,12 @@ std::vector<histos> addhistograms  (std::vector<histos> histos_0, std::vector<hi
 void setuphistograms               (std::vector<histos> histos, int color);
 std::vector<histos> addstack       (std::vector<histos> stack_0, std::vector<histos> histos_0);
 
+void overwritehistograms (std::vector<histos> newhistos, TString plots, TString namefile);
+
 /***********************
  Files and Directories
 ************************/
 TString dirnameIn= "TopResults/";
-TString fl  = "hSF-Lumi2260-v1_Tree_LepJets_v7-6-1_NewSF_btag_Spring15-bx25_2170pb-1";  
+//TString fl  = "hSF-Lumi2260-v1_Tree_LepJets_v7-6-1_NewSF_btag_Spring15-bx25_2170pb-1";  
+TString fl  = "hSF-CodeTest-Lumi2260-v1_Tree_LepJets_v7-6-1_NewSF_btag_Spring15-bx25_2170pb-1";  
 
