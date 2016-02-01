@@ -617,12 +617,13 @@ int main(int argc, const char* argv[]){
       if(_syst && syst_varname.Contains("btag")){
 	// Add in quadrature all the syst. components  
 	if (syst_varname.Contains("btag_Up")) {
-	  for (int ssup = 1; ssup<19; ssup+=2) btagUnc = (*Jet_SF_CSV)[ssup] * (*Jet_SF_CSV)[ssup];
+	  for (int ssup = 1; ssup<19; ssup+=2) btagUnc += (*Jet_SF_CSV)[ssup] * (*Jet_SF_CSV)[ssup];
+	btagUnc = sqrt(btagUnc);
 	}
 	if (syst_varname.Contains("btag_Down")){
-	  for (int ssdown = 2; ssdown<19; ssdown+=2) btagUnc = (*Jet_SF_CSV)[ssdown] * (*Jet_SF_CSV)[ssdown];
+	  for (int ssdown = 2; ssdown<19; ssdown+=2) btagUnc += (*Jet_SF_CSV)[ssdown] * (*Jet_SF_CSV)[ssdown];
+	btagUnc = -1.0*sqrt(btagUnc);
 	}
-	btagUnc = sqrt(btagUnc);
 	PUWeight = PUWeight * ((*Jet_SF_CSV)[btagUnc::CENTRAL] + btagUnc);
       } // if(_syst && btag)
       else {
@@ -654,8 +655,8 @@ int main(int argc, const char* argv[]){
 	else if(syst_varname.Contains("JER_Down")){
 	  JetSystVar = (*Jet_JER_Down)[ijet];
 	}
-	jet_pT = jet_pT*JetSystVar;
       }
+      jet_pT = jet_pT*JetSystVar;
 
       if(jet_pT>25){ // Jet pT > 30GeV
 	
@@ -795,10 +796,19 @@ int main(int argc, const char* argv[]){
     if (fname.Contains("QCD_MuEnr")    && Channel==1)  cut = -1;
     if (fname.Contains("QCD_EGEnr")    && Channel==0)  cut = -1;
 
+    // Systematics: Run exclusively over 2btag cut
+    int icut_begin = 0;
+    if (_syst){
+      if(cut>1){ 
+	icut_begin = 2;
+	cut = 2;
+      }
+      else continue;
+    }
     /***************************
           Loop over cuts
     ***************************/
-    for(int icut = 0; icut < (cut+1); icut++){
+    for(int icut = icut_begin; icut < (cut+1); icut++){
             
       /************************************************************
         pT reweight (Only for ttbar signal)
