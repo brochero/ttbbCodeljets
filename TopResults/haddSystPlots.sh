@@ -1,0 +1,1 @@
+hadd ${1}_ttbar_PowhegPythiaAllSyst.root ${1}_ttbar_PowhegPythiattbbSystError.root ${1}_ttbar_PowhegPythiattbSystError.root ${1}_ttbar_PowhegPythiattccSystError.root ${1}_ttbar_PowhegPythiattLFSystError.root ${1}_ttbar_PowhegPythiattSystError.root

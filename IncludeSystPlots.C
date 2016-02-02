@@ -61,7 +61,8 @@ void IncludeSystPlots( TString ttbarCat = "ttbb", TString plots="2btag"){
 	float Syst  = sqrt(JES**2 + JER**2 + btag**2)*Sample[h].hist[ch]->GetBinContent(ibin);
 	float Total = sqrt(Syst**2 + Stat**2); 
 	
-	Sample[h].hist[ch]->SetBinError(ibin, Total);
+	if (Sample[h].hist[ch]->GetBinContent(ibin) == 0.0) Sample[h].hist[ch]->SetBinError(ibin, 0.0);
+	else Sample[h].hist[ch]->SetBinError(ibin, Total);
 
 	//cout << "Stat = " << Stat << " Syst = " << Syst << " Total Error = " << Total << endl;	
 	
