@@ -406,7 +406,7 @@ void Plots(TString plots="2btag", bool LogScale=false){
       //RatioSyst->Divide(Stack[h].hist[ch]); // Should be the histogram with the Total Syst. Unc.
       std::vector<double> ratioContent;
       for(unsigned int b_r = 1; b_r <= RatioSyst->GetNbinsX(); b_r++){
-	RatioSyst->SetBinContent(b_r,1.0);
+	//RatioSyst->SetBinContent(b_r,1.0);
 	//RatioSyst->SetBinError(b_r,0.15); // Tempotal!!!
       }      
 

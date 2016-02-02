@@ -1,6 +1,6 @@
 #include "roo2Dfit.h"
 
-void roo2Dfit(){
+void roo2Dfit(  TString SystVar = ""){
 
   gROOT->ProcessLine(".L tdrStyle.C");
   setTDRStyle();
@@ -14,11 +14,12 @@ void roo2Dfit(){
 
   InFile[data] = LoadSample("_DataSingleLep.root");
 
-  InFile[ttbb]   = LoadSample("_ttbar_PowhegPythiattbb.root");
-  InFile[ttb]    = LoadSample("_ttbar_PowhegPythiattb.root");
-  InFile[ttcc]   = LoadSample("_ttbar_PowhegPythiattcc.root");
-  InFile[ttLF]   = LoadSample("_ttbar_PowhegPythiattLF.root"); // Includes ttc
-  InFile[ttccLF] = LoadSample("_ttbar_PowhegPythiattccLF.root");
+
+  InFile[ttbb]   = LoadSample("_ttbar_PowhegPythia" + SystVar + "ttbb.root");
+  InFile[ttb]    = LoadSample("_ttbar_PowhegPythia" + SystVar + "ttb.root");
+  InFile[ttcc]   = LoadSample("_ttbar_PowhegPythia" + SystVar + "ttcc.root");
+  InFile[ttLF]   = LoadSample("_ttbar_PowhegPythia" + SystVar + "ttLF.root"); // Includes ttc
+  InFile[ttccLF] = LoadSample("_ttbar_PowhegPythia" + SystVar + "ttccLF.root");
 
   InFile[WJets]     = LoadSample("_WJets_MCatNLO.root");
   InFile[ZJets]     = LoadSample("_ZJets_MCatNLO.root");
@@ -27,9 +28,9 @@ void roo2Dfit(){
   InFile[QCD]       = LoadSample("_QCD.root");
 
   // Add Backgrounds
-  InFile[Bkgtt]    = LoadSample("_ttbar_PowhegPythiaBkgtt.root"); // ttbarBkg + tt
+  InFile[Bkgtt]    = LoadSample("_ttbar_PowhegPythia" + SystVar + "Bkgtt.root"); // ttbarBkg + tt
   InFile[BkgOther] = LoadSample("_BkgOther.root"); 
-  InFile[BkgFull]  = LoadSample("_BkgFull.root"); // BkgOther + Bkgtt
+  InFile[BkgFull]  = LoadSample("_BkgFull" + SystVar + ".root"); // BkgOther + Bkgtt
 
 
   TString name_ch[3];
@@ -95,7 +96,7 @@ void roo2Dfit(){
     RooFormulaVar fit_ratio_ttbb_con("fit_ratio_ttbb_con", "FITTED ratio ttbb/ttjj contrained", "@0/@1*@2", RooArgList(fit_ratio_ttbb, RECO_ratio_ttbb, RECO_ratio_ttb));
 
     // Normalization Constant
-    RooRealVar k("k", "Normalization factor", 0.95, 0.90, 1.1);
+    RooRealVar k("k", "Normalization factor", 0.95, 0.90, 1.5);
 
     // Background
     RooRealVar  fit_ratio_Bkgtt   ("fit_ratio_Bkgtt",    "FITTED ratio bkgtt/FullBkg",    0.4, 0.0, 1.0); 
@@ -165,7 +166,7 @@ void roo2Dfit(){
 
     model.fitTo(data_his);
 
-    ttfree_name = "FirstTest";
+    ttfree_name = "ttbCon";
 
     
 
@@ -339,7 +340,7 @@ void roo2Dfit(){
          Save Histos
     ***********************/    
     TString dirfigname_pdf;
-    dirfigname_pdf = dirnameIn + "FIT-" + ttfree_name + "_figures_" + fl + "/pdf/";
+    dirfigname_pdf = dirnameIn + "FIT-" + ttfree_name + "_figures_" + fl + SystVar + "/pdf/";
     // make a dir if it does not exist!!
     gSystem->mkdir(dirfigname_pdf,       kTRUE);
     canvas_comp->    SaveAs(dirfigname_pdf + "Comp_"   + name_ch[ch] + ".pdf");

@@ -1,6 +1,6 @@
 #include "Plots.h"
 
-void IncludeSystPlots(TString plots="2btag"){
+void IncludeSystPlots( TString ttbarCat = "ttbb", TString plots="2btag"){
   
   /****************
        Channel
@@ -17,25 +17,25 @@ void IncludeSystPlots(TString plots="2btag"){
   ****************/ 
   // ttbar categorization 
   std::vector<histos> Sample;
-  Sample = loadhistograms(plots, files + "_ttbar_PowhegPythiattbb");
+  Sample = loadhistograms(plots, files + "_ttbar_PowhegPythia" + ttbarCat);
 
   // JES
   std::vector<histos> Sample_JES_Up;
-  Sample_JES_Up = loadhistograms(plots, files + "_ttbar_PowhegPythia_SYS_JES_Upttbb");
+  Sample_JES_Up = loadhistograms(plots, files + "_ttbar_PowhegPythia_SYS_JES_Up" + ttbarCat);
   std::vector<histos> Sample_JES_Down;
-  Sample_JES_Down = loadhistograms(plots, files + "_ttbar_PowhegPythia_SYS_JES_Downttbb");
+  Sample_JES_Down = loadhistograms(plots, files + "_ttbar_PowhegPythia_SYS_JES_Down" + ttbarCat);
   // JER
   std::vector<histos> Sample_JER_Up;
-  Sample_JER_Up = loadhistograms(plots, files + "_ttbar_PowhegPythia_SYS_JER_Upttbb");
+  Sample_JER_Up = loadhistograms(plots, files + "_ttbar_PowhegPythia_SYS_JER_Up" + ttbarCat);
   std::vector<histos> Sample_JER_Nom;
-  Sample_JER_Nom = loadhistograms(plots, files + "_ttbar_PowhegPythia_SYS_JER_Nomttbb");
+  Sample_JER_Nom = loadhistograms(plots, files + "_ttbar_PowhegPythia_SYS_JER_Nom" + ttbarCat);
   std::vector<histos> Sample_JER_Down;
-  Sample_JER_Down = loadhistograms(plots, files + "_ttbar_PowhegPythia_SYS_JER_Downttbb");
+  Sample_JER_Down = loadhistograms(plots, files + "_ttbar_PowhegPythia_SYS_JER_Down" + ttbarCat);
   // b-tagging
   std::vector<histos> Sample_btag_Up;
-  Sample_btag_Up = loadhistograms(plots, files + "_ttbar_PowhegPythia_SYS_btag_Upttbb");
+  Sample_btag_Up = loadhistograms(plots, files + "_ttbar_PowhegPythia_SYS_btag_Up" + ttbarCat);
   std::vector<histos> Sample_btag_Down;
-  Sample_btag_Down = loadhistograms(plots, files + "_ttbar_PowhegPythia_SYS_btag_Downttbb");
+  Sample_btag_Down = loadhistograms(plots, files + "_ttbar_PowhegPythia_SYS_btag_Down" + ttbarCat);
   
   for(unsigned int h = 0; h < Sample.size(); h++){
     for(unsigned int ch=0; ch<2; ch++){// Only mu+Jets and e+Jets  
@@ -63,13 +63,13 @@ void IncludeSystPlots(TString plots="2btag"){
 	
 	Sample[h].hist[ch]->SetBinError(ibin, Total);
 
-	cout << "Stat = " << Stat << " Syst = " << Syst << " Total Error = " << Total << endl;	
+	//cout << "Stat = " << Stat << " Syst = " << Syst << " Total Error = " << Total << endl;	
 	
       }// for(bins)
     } // for(channel)    
   }  // for(histograms)  
   
-  overwritehistograms(Sample, plots, files + "_ttbar_PowhegPythiattbb");
+  overwritehistograms(Sample, plots, files + "_ttbar_PowhegPythia" + ttbarCat);
 
 } //end Plots.C
 
