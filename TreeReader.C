@@ -973,8 +973,9 @@ int main(int argc, const char* argv[]){
   bool matchsamplename=false;
   
   for(int i=0; i<fname.Sizeof(); i++){
-    if (i>2){
-      if (fname[i-3]=='-' && 
+    if (i>3){
+      if (fname[i-4]=='b' && 
+	  fname[i-3]=='-' && 
 	  fname[i-2]=='1' && 
 	  fname[i-1]=='_') matchsamplename=true;
     }
