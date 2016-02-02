@@ -64,6 +64,17 @@ void roo2Dfit(  TString SystVar = ""){
   Eff_Ratio[0] = 0.4784;
   Eff_Ratio[1] = 0.4468;
   Eff_Ratio[2] = 0.4635;
+
+    // Results
+    TString ttfree_name = "ttbCon";
+
+    TString dirfigname_pdf;
+    dirfigname_pdf = dirnameIn + "FIT-" + ttfree_name + "_figures_" + fl + SystVar + "/pdf/";
+    // make a dir if it does not exist!!
+    gSystem->mkdir(dirfigname_pdf,       kTRUE);
+    TString Rfile = dirnameIn + "FIT-" + ttfree_name + "_figures_" + fl + SystVar + "/FitResult.log";
+    FILE* fResult = fopen(Rfile, "w");
+
     
   for (unsigned int ch=0; ch<3; ch++){
     
@@ -154,8 +165,6 @@ void roo2Dfit(  TString SystVar = ""){
     RooHistPdf BkgFull_hispdf  ("BkgFull_hispdf",  "PDF for all Bkg",   RooArgSet(arg_CSV), BkgFull_his);
 
     // Model
-    TString ttfree_name;
-
     RooAddPdf model_ttjj("model_ttjj", "Model For Signal (ttjj)", 
 			 RooArgList(ttbb_hispdf, ttb_hispdf, ttccLF_hispdf), 
 			 RooArgList(fit_ratio_ttbb, fit_ratio_ttbb_con));
@@ -165,8 +174,6 @@ void roo2Dfit(  TString SystVar = ""){
     		     RooArgList(kn_ttjj_var, kn_Bkgtt_var, kn_BkgOther_var)); 
 
     model.fitTo(data_his);
-
-    ttfree_name = "ttbCon";
 
     
 
@@ -227,11 +234,15 @@ void roo2Dfit(  TString SystVar = ""){
     model.plotOn(CSV2Datattbb_f, Components(RooArgSet(ttbb_hispdf)), LineColor(colors[ttbb]), RooFit::Name("CSV2Datattbb_f_Fitttbb"));
     model.plotOn(CSV3Datattbb_f, Components(RooArgSet(ttbb_hispdf)), LineColor(colors[ttbb]));
 
+    // Parameters
     RooArgSet *params = model.getVariables();
     params->Print("v");
 
     double k_pf       = k.getVal();
     double k_pf_error = k.getError();
+
+    double ratio_ttbb_pf       = fit_ratio_ttbb.getVal();
+    double ratio_ttbb_pf_error = fit_ratio_ttbb.getError();
 
     // Plot: Ratio and Normalization Constant
     RooAbsReal *nll_ratio = model.createNLL(data_his);
@@ -241,6 +252,26 @@ void roo2Dfit(  TString SystVar = ""){
 
     RooPlot *k_f = k.frame();
     nll_ratio->plotOn(k_f, ShiftToZero());
+
+    // Efficiency Ratios
+    float eff_Ratiobbjj[3]; // Eff_ttjj/Eff_ttbb    
+    eff_Ratiobbjj[0] = 0.1884 / 0.4359;
+    eff_Ratiobbjj[1] = 0.1586 / 0.3687;
+    eff_Ratiobbjj[2] = 0.1735 / 0.4022;
+    // Acceptance Ratios
+    float acc_Ratiobbjj[3]; // Acc_ttjj/Eff_ttbb    
+    acc_Ratiobbjj[0] = 0.2757 / 0.0804;
+    acc_Ratiobbjj[1] = 0.2747 / 0.0805;
+    acc_Ratiobbjj[2] = 0.2752 / 0.0804;
+
+    float ratio_ttbb_Vis       = ratio_ttbb_pf * eff_Ratiobbjj[ch];
+    float ratio_ttbb_Vis_error = ratio_ttbb_pf * eff_Ratiobbjj[ch] * (ratio_ttbb_pf_error/ratio_ttbb_pf);
+    float ratio_ttbb_Full       = ratio_ttbb_Vis * acc_Ratiobbjj[ch];
+    float ratio_ttbb_Full_error = ratio_ttbb_Vis * acc_Ratiobbjj[ch] * (ratio_ttbb_Vis_error/ratio_ttbb_Vis);
+
+    float N_ttjj_pf = k_pf * n_ttjj_var.getVal();
+    float N_ttbb_pf = ratio_ttbb_pf * N_ttjj_pf;
+
 
     /***********************
             Plots
@@ -339,18 +370,23 @@ void roo2Dfit(  TString SystVar = ""){
     /***********************
          Save Histos
     ***********************/    
-    TString dirfigname_pdf;
-    dirfigname_pdf = dirnameIn + "FIT-" + ttfree_name + "_figures_" + fl + SystVar + "/pdf/";
-    // make a dir if it does not exist!!
-    gSystem->mkdir(dirfigname_pdf,       kTRUE);
     canvas_comp->    SaveAs(dirfigname_pdf + "Comp_"   + name_ch[ch] + ".pdf");
     canvas_data->    SaveAs(dirfigname_pdf + "Data_"   + name_ch[ch] + ".pdf");
     canvas_ratio_k-> SaveAs(dirfigname_pdf + "Para_"   + name_ch[ch] + ".pdf");
 
-    // clear Canvas
-    //canvas->Clear();    
     
+    fprintf(fResult,"--------------------------------------------------------------\n" );
+    fprintf(fResult,"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" );
+    fprintf(fResult,"--------------------------------------------------------------\n" );
+    fprintf(fResult,"FINAL: RESULT %s \n", name_ch[ch].Data()      );
+    fprintf(fResult,"FINAL: R_ttbb/ttjj (RECO) = %.4f +- %.4f \n", ratio_ttbb_pf, ratio_ttbb_pf_error );
+    fprintf(fResult,"FINAL: R_ttbb/ttjj (Vis)  = %.4f +- %.4f \n", ratio_ttbb_Vis, ratio_ttbb_Vis_error  ); 
+    fprintf(fResult,"FINAL: R_ttbb/ttjj (Full) = %.4f +- %.4f \n", ratio_ttbb_Full, ratio_ttbb_Full_error  );
+    fprintf(fResult,"FINAL: k                  = %.4f +- %.4f \n", k_pf,  k_pf_error );
+
   } // for(ch)
+  
+  fclose(fResult);
   
 }
 

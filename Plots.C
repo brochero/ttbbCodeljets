@@ -77,7 +77,7 @@ void Plots(TString plots="2btag", bool LogScale=false){
   
   // Systematic Uncertainty
   std::vector<histos> ttbar_syst;
-  ttbar_syst = loadhistograms(plots, files + "_ttbar_PowhegPythiaAllSyst");
+  ttbar_syst = loadhistograms(plots, files + "_ttbar_PowhegPythiaAllSystError");
   setuphistograms(ttbar_syst, col_tt);
 
   /****************
