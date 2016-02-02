@@ -1,6 +1,6 @@
 #include "roo2Dfit.h"
 
-void roo2Dfit(  TString SystVar = ""){
+void roo2Dfit(TString SystVar = ""){
 
   gROOT->ProcessLine(".L tdrStyle.C");
   setTDRStyle();
@@ -57,7 +57,7 @@ void roo2Dfit(  TString SystVar = ""){
   TCanvas *canvas_data = new TCanvas("canvas_data",   "Data Plots");
   canvas_data->Divide(2,2);
   TCanvas *canvas_ratio_k = new TCanvas("canvas_ratio_k", "Parameters");
-  canvas_ratio_k->Divide(2,2);
+  canvas_ratio_k->Divide(2,1);
 
   // Efficiency Ratios
   float Eff_Ratio[3]; // Eff_ttjj/Eff_ttbb    
@@ -107,7 +107,7 @@ void roo2Dfit(  TString SystVar = ""){
     RooFormulaVar fit_ratio_ttbb_con("fit_ratio_ttbb_con", "FITTED ratio ttbb/ttjj contrained", "@0/@1*@2", RooArgList(fit_ratio_ttbb, RECO_ratio_ttbb, RECO_ratio_ttb));
 
     // Normalization Constant
-    RooRealVar k("k", "Normalization factor", 0.95, 0.90, 1.5);
+    RooRealVar k("k", "Normalization factor", 0.95, 0.90, 1.05);
 
     // Background
     RooRealVar  fit_ratio_Bkgtt   ("fit_ratio_Bkgtt",    "FITTED ratio bkgtt/FullBkg",    0.4, 0.0, 1.0); 
@@ -316,6 +316,8 @@ void roo2Dfit(  TString SystVar = ""){
     legCSV2Data_f->AddEntry(CSV2Data_f->findObject("CSV2Data_f_FitBkg"),"Bkg","l");
 
     canvas_data->cd(1);
+    float maxh = CSV2Data_f->GetMaximum();
+    CSV2Data_f->SetMaximum(1.5*maxh);
     CSV2Data_f->Draw();
     legCSV2Data_f->Draw("SAME");
 
