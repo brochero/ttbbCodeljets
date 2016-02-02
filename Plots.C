@@ -369,7 +369,7 @@ void Plots(TString plots="2btag", bool LogScale=false){
       titlePr->SetTextSizePixels(24);
       titlePr->Draw("SAME");
       
-      title  = new TLatex(-20.,50.,"CMS #sqrt{s} = 13TeV, L = 2.1 fb^{-1}");
+      title  = new TLatex(-20.,50.,"CMS #sqrt{s} = 13TeV, L = 2.26 fb^{-1}");
       title->SetNDC();
       title->SetTextAlign(12);
       title->SetX(0.20);
