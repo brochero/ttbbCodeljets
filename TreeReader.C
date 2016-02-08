@@ -202,6 +202,8 @@ int main(int argc, const char* argv[]){
 
   int Event,Run,Channel, GoodPV;
   float PUWeight, GENWeight; 
+  std::vector<float> *PUWeight_sys=0;
+
 
   float MET,MET_Phi;
 
@@ -220,6 +222,9 @@ int main(int argc, const char* argv[]){
   std::vector<int> *GenConeCat=0;
   float GenLep_pT;
   std::vector<float> *GenJet_pT=0;
+
+  // Scale Syst. Unc.
+  std::vector<float> *ScaleWeight=0;
    
  /*********************************
            Tree Branches
@@ -228,7 +233,7 @@ int main(int argc, const char* argv[]){
   theTree.SetBranchAddress( "event",    &Event );
   theTree.SetBranchAddress( "run",      &Run );
 
-  theTree.SetBranchAddress( "PUWeight",  &PUWeight );
+  theTree.SetBranchAddress( "PUWeight",  &PUWeight_sys );
   theTree.SetBranchAddress( "channel",   &Channel );
 
   theTree.SetBranchAddress( "GoodPV",  &GoodPV );
@@ -248,17 +253,20 @@ int main(int argc, const char* argv[]){
   theTree.SetBranchAddress( "jet_pz", &Jet_pz );
   theTree.SetBranchAddress( "jet_E",  &Jet_E );
 
-  theTree.SetBranchAddress( "jet_JES_Up",  &Jet_JES_Up );
-  theTree.SetBranchAddress( "jet_JES_Down",  &Jet_JES_Down );
-
-  theTree.SetBranchAddress( "jet_JER_Up",  &Jet_JER_Up );
-  theTree.SetBranchAddress( "jet_JER_Nom",  &Jet_JER_Nom );
-  theTree.SetBranchAddress( "jet_JER_Down",  &Jet_JER_Down );
-
   theTree.SetBranchAddress( "jet_CSV",  &Jet_CSV );
   theTree.SetBranchAddress( "jet_SF_CSV",  &Jet_SF_CSV );
   theTree.SetBranchAddress( "jet_partonFlavour",  &Jet_partonFlavour );
 
+
+  if(!fname.Contains("Data")){
+    theTree.SetBranchAddress( "jet_JES_Up",  &Jet_JES_Up );
+    theTree.SetBranchAddress( "jet_JES_Down",  &Jet_JES_Down );
+    
+    theTree.SetBranchAddress( "jet_JER_Up",  &Jet_JER_Up );
+    theTree.SetBranchAddress( "jet_JER_Nom",  &Jet_JER_Nom );
+    theTree.SetBranchAddress( "jet_JER_Down",  &Jet_JER_Down );
+  }
+  
   // Number of Events and Weights (MC@NLO)
   TFile *fileEntries = NULL;
   fileEntries = TFile::Open(fdir + fname + ".root");
@@ -283,6 +291,7 @@ int main(int argc, const char* argv[]){
 
   // ttbar event categorization
   if(fname.Contains("ttbar") && !fname.Contains("Bkg")){
+    theTree.SetBranchAddress("scaleweight",  &ScaleWeight );
     theTree.SetBranchAddress("gencatid",     &GenCat_ID);
     theTree.SetBranchAddress("genconecatid", &GenConeCat);
     theTree.SetBranchAddress("genlepton_pT", &GenLep_pT);
@@ -585,6 +594,13 @@ int main(int argc, const char* argv[]){
     theTree.GetEntry(ievt);  
     print_progress(theTree.GetEntries(), ievt);
 
+    // PU reweight: Includes Syst. Unc.
+    if (_syst){
+      if(syst_varname.Contains("PileUp_Up"))         PUWeight = (*PUWeight_sys)[1]; // Up
+      if else (syst_varname.Contains("PileUp_Down")) PUWeight = (*PUWeight_sys)[2]; // Down
+    }
+    else PUWeight = (*PUWeight_sys)[0];
+
     // MCatNLO GEN Weights (For MC@NLO)
     PUWeight = PUWeight * GENWeight;
     // Normalization Weight
@@ -627,6 +643,7 @@ int main(int argc, const char* argv[]){
 	PUWeight = PUWeight * ((*Jet_SF_CSV)[btagUnc::CENTRAL] + btagUnc);
       } // if(_syst && btag)
       else {
+	// SF estimated for jets with pT > 30GeV
 	PUWeight = PUWeight * (*Jet_SF_CSV)[btagUnc::CENTRAL];
       }
     }// if(!data)
@@ -658,7 +675,7 @@ int main(int argc, const char* argv[]){
       }
       jet_pT = jet_pT*JetSystVar;
 
-      if(jet_pT>25){ // Jet pT > 30GeV
+      if(jet_pT>30){ // Jet pT > 30GeV
 	
 	JetIndex.push_back(ijet);
 	NJets++; // Number of jets
@@ -714,7 +731,7 @@ int main(int argc, const char* argv[]){
 		     hmuIDISOSF, hmuTriggerSF,
 		     heIDISOSF,  heTriggerSF);
       
-      // Easiest adaptation: Create in the same way the Lep_SF vector
+      // Easiest adaptation: Create Lep_SF in the same way the Lep_SF vector
       // SF_ID_ISO_Tr = Lep_SF;
 
       if(_idiso_unc){
