@@ -3,7 +3,7 @@
 //#include "/home/brochero/ttbar/TopCodeljets/TopResults/Yields_CSVT-v0/Yields.h" //Yields
 //#include "/home/brochero/ttbar/TopCodeljets/TopResults/Yields_FullLumi-v3/Yields.h" //Yields
 //#include "/home/brochero/ttbar/TopCodeljets/TopResults/Yields_6Jets_2btagM_1btagT/Yields.h" //Yields
-#include "/home/brochero/ttbar/ttbbCodeljets/TopResults/Yields_Lumi2260-v2/Yields.h" //Yields
+#include "/home/brochero/ttbar/ttbbCodeljets/TopResults/Yields_Lumi2260-v3/Yields.h" //Yields
 
 void TableYields_ttbb(bool Isttbb = true){
 
@@ -14,7 +14,7 @@ void TableYields_ttbb(bool Isttbb = true){
   
 }
 
-void TableYields(TString cutname, bool ttbb = false, TString outfiledir= "ChFixed-v0"){
+void TableYields(TString cutname, bool ttbb = false, TString outfiledir= "Lumi2260-v3"){
 
   int cut;
   if      (cutname=="lepton")   cut = 0;
@@ -128,8 +128,8 @@ void TableYields(TString cutname, bool ttbb = false, TString outfiledir= "ChFixe
 		   QCD_MuEnr_170to300[index_c][2][0][cut] + 
 		   QCD_MuEnr_300to470[index_c][2][0][cut] + 
 		   QCD_MuEnr_470to600[index_c][2][0][cut] + 
-		   QCD_MuEnr_800to1000[index_c][2][0][cut] + 
-		   QCD_MuEnr_1000toInf[index_c][2][0][cut]);
+		   QCD_MuEnr_800to1000[index_c][2][0][cut]); //+ 
+		   //QCD_MuEnr_1000toInf[index_c][2][0][cut]);
   
   err_QCD[0]    = sqrt(err_QCD_MuEnr_20to30[index_c][2][0][cut]**2 + 
 		       err_QCD_MuEnr_30to50[index_c][2][0][cut]**2 + 
@@ -139,15 +139,15 @@ void TableYields(TString cutname, bool ttbb = false, TString outfiledir= "ChFixe
 		       err_QCD_MuEnr_170to300[index_c][2][0][cut]**2 + 
 		       err_QCD_MuEnr_300to470[index_c][2][0][cut]**2 + 
 		       err_QCD_MuEnr_470to600[index_c][2][0][cut]**2 + 
-		       err_QCD_MuEnr_800to1000[index_c][2][0][cut]**2 + 
-		       err_QCD_MuEnr_1000toInf[index_c][2][0][cut]**2);
+		       err_QCD_MuEnr_800to1000[index_c][2][0][cut]**2);// + 
+		       //err_QCD_MuEnr_1000toInf[index_c][2][0][cut]**2);
   // QCD Electron
   QCD    [1]    = (QCD_EGEnr_15to20[index_c][2][1][cut] + 
 		   QCD_EGEnr_20to30[index_c][2][1][cut] + 
 		   QCD_EGEnr_30to50[index_c][2][1][cut] + 
 		   QCD_EGEnr_50to80[index_c][2][1][cut] + 
 		   QCD_EGEnr_80to120[index_c][2][1][cut] + 
-		   QCD_EGEnr_120to170[index_c][2][1][cut] + 
+		   //QCD_EGEnr_120to170[index_c][2][1][cut] + 
 		   QCD_EGEnr_170to300[index_c][2][1][cut] + 
 		   QCD_EGEnr_300toInf[index_c][2][1][cut]);
   
@@ -156,7 +156,7 @@ void TableYields(TString cutname, bool ttbb = false, TString outfiledir= "ChFixe
 		       err_QCD_EGEnr_30to50[index_c][2][1][cut]**2 + 
 		       //err_QCD_EGEnr_50to80[index_c][2][1][cut]**2 + 
 		       err_QCD_EGEnr_80to120[index_c][2][1][cut]**2 + 
-		       err_QCD_EGEnr_120to170[index_c][2][1][cut]**2 + 
+		       //err_QCD_EGEnr_120to170[index_c][2][1][cut]**2 + 
 		       err_QCD_EGEnr_170to300[index_c][2][1][cut]**2 + 
 		       err_QCD_EGEnr_300toInf[index_c][2][1][cut]**2);
   
