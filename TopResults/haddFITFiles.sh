@@ -7,3 +7,4 @@ hadd ${1}_ttbar_PowhegPythiattccLF.root ${1}_ttbar_PowhegPythiattcc.root ${1}_tt
 hadd ${1}_ttbar_PowhegPythiaBkgtt.root ${1}_ttbar_PowhegPythiatt.root ${1}_ttbar_PowhegPythiaBkg.root
 hadd ${1}_BkgOther.root ${1}_SingleTop.root ${1}_VV.root ${1}_QCD.root ${1}_ZJets_MCatNLO.root ${1}_WJets_MCatNLO.root
 
+hadd ${1}_AllMC.root ${1}_BkgFull.root ${1}_ttbar_PowhegPythiattccLF.root ${1}_ttbar_PowhegPythiattbb.root ${1}_ttbar_PowhegPythiattb.root
