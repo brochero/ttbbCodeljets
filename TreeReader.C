@@ -595,9 +595,9 @@ int main(int argc, const char* argv[]){
     print_progress(theTree.GetEntries(), ievt);
 
     // PU reweight: Includes Syst. Unc.
-    if (_syst){
+    if (_syst && syst_varname.Contains("PileUp")){
       if(syst_varname.Contains("PileUp_Up"))         PUWeight = (*PUWeight_sys)[1]; // Up
-      if else (syst_varname.Contains("PileUp_Down")) PUWeight = (*PUWeight_sys)[2]; // Down
+      else if(syst_varname.Contains("PileUp_Down"))  PUWeight = (*PUWeight_sys)[2]; // Down
     }
     else PUWeight = (*PUWeight_sys)[0];
 
@@ -675,7 +675,7 @@ int main(int argc, const char* argv[]){
       }
       jet_pT = jet_pT*JetSystVar;
 
-      if(jet_pT>30){ // Jet pT > 30GeV
+      if(jet_pT>25){ // Jet pT > 30GeV
 	
 	JetIndex.push_back(ijet);
 	NJets++; // Number of jets
@@ -815,13 +815,13 @@ int main(int argc, const char* argv[]){
 
     // Systematics: Run exclusively over 2btag cut
     int icut_begin = 0;
-    if (_syst){
-      if(cut>1){ 
-	icut_begin = 2;
-	cut = 2;
-      }
-      else continue;
-    }
+    // if (_syst){
+    //   if(cut>1){ 
+    // 	icut_begin = 2;
+    // 	cut = 2;
+    //   }
+    //   else continue;
+    // }
     /***************************
           Loop over cuts
     ***************************/
