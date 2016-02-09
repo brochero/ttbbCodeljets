@@ -1,12 +1,12 @@
 #!/bin/sh
-file="Tree_LepJets_v7-6-1_NewSF_btag_Spring15-bx25_2170pb-1"
+file="Tree_LepJets_v7-6-1_systunc_Spring15-bx25_2170pb-1"
 
 #######################################
 # $2 should be '-o OutputName... etc' #
 #######################################
 
-./TreeReader.run -i ${file}_DataSingleEG $1
-./TreeReader.run -i ${file}_DataSingleMu $1
+# ./TreeReader.run -i ${file}_DataSingleEG $1
+# ./TreeReader.run -i ${file}_DataSingleMu $1
 
 # ./TreeReader.run -i ${file}_ttbar_PowhegPythia   $1
 # ./TreeReader.run -i ${file}_ttbar_MadgraphPythia $1
@@ -34,25 +34,25 @@ file="Tree_LepJets_v7-6-1_NewSF_btag_Spring15-bx25_2170pb-1"
 # ./TreeReader.run -i ${file}_ZJets_M50_MCatNLO     $1
 # ./TreeReader.run -i ${file}_ZJets_M10to50_MCatNLO $1
 
-# ./TreeReader.run -i ${file}_QCD_MuEnr_20to30    $1
-# ./TreeReader.run -i ${file}_QCD_MuEnr_30to50    $1
-# ./TreeReader.run -i ${file}_QCD_MuEnr_50to80    $1
-# ./TreeReader.run -i ${file}_QCD_MuEnr_80to120   $1
-# ./TreeReader.run -i ${file}_QCD_MuEnr_120to170  $1
-# ./TreeReader.run -i ${file}_QCD_MuEnr_170to300  $1
-# ./TreeReader.run -i ${file}_QCD_MuEnr_300to470  $1
-# ./TreeReader.run -i ${file}_QCD_MuEnr_470to600  $1
-# ./TreeReader.run -i ${file}_QCD_MuEnr_800to1000 $1
-# #./TreeReader.run -i ${file}_QCD_MuEnr_1000toInf $1
+./TreeReader.run -i ${file}_QCD_MuEnr_20to30    $1
+./TreeReader.run -i ${file}_QCD_MuEnr_30to50    $1
+./TreeReader.run -i ${file}_QCD_MuEnr_50to80    $1
+./TreeReader.run -i ${file}_QCD_MuEnr_80to120   $1
+./TreeReader.run -i ${file}_QCD_MuEnr_120to170  $1
+./TreeReader.run -i ${file}_QCD_MuEnr_170to300  $1
+./TreeReader.run -i ${file}_QCD_MuEnr_300to470  $1
+./TreeReader.run -i ${file}_QCD_MuEnr_470to600  $1
+./TreeReader.run -i ${file}_QCD_MuEnr_800to1000 $1
+#./TreeReader.run -i ${file}_QCD_MuEnr_1000toInf $1
 
-# ./TreeReader.run -i ${file}_QCD_EGEnr_15to20      $1
-# ./TreeReader.run -i ${file}_QCD_EGEnr_20to30      $1
-# ./TreeReader.run -i ${file}_QCD_EGEnr_30to50      $1
-# ./TreeReader.run -i ${file}_QCD_EGEnr_50to80      $1
-# ./TreeReader.run -i ${file}_QCD_EGEnr_80to120     $1
-# #./TreeReader.run -i ${file}_QCD_EGEnr_120to170    $1
-# ./TreeReader.run -i ${file}_QCD_EGEnr_170to300    $1
-# ./TreeReader.run -i ${file}_QCD_EGEnr_300toInf    $1
+./TreeReader.run -i ${file}_QCD_EGEnr_15to20      $1
+./TreeReader.run -i ${file}_QCD_EGEnr_20to30      $1
+./TreeReader.run -i ${file}_QCD_EGEnr_30to50      $1
+./TreeReader.run -i ${file}_QCD_EGEnr_50to80      $1
+./TreeReader.run -i ${file}_QCD_EGEnr_80to120     $1
+#./TreeReader.run -i ${file}_QCD_EGEnr_120to170    $1
+./TreeReader.run -i ${file}_QCD_EGEnr_170to300    $1
+./TreeReader.run -i ${file}_QCD_EGEnr_300toInf    $1
 
 
 

@@ -350,7 +350,7 @@ int main(int argc, const char* argv[]){
   std::cout << "-----------------------------" << std::endl;
   std::cout << "Number of RAW-e+Jets events:" << std::endl;
   std::cout << "ttjj Acceptance Full Ph-Sp: " << AccEvent_full_ttjj[1] << std::endl;
-  std::cout << "ttbb Acceptance: Full Ph-Sp" << AccEvent_full_ttbb[1] << std::endl;
+  std::cout << "ttbb Acceptance: Full Ph-Sp: " << AccEvent_full_ttbb[1] << std::endl;
   std::cout << "ttbb/ttjj Full Ph-Sp: " << 1.0*AccEvent_full_ttbb[1]/AccEvent_full_ttjj[1] << std::endl;
   std::cout << "-----------------------------" << std::endl;
   std::cout << "Number of RAW-l+Jets events:" << std::endl;
@@ -368,7 +368,7 @@ int main(int argc, const char* argv[]){
   std::cout << "-----------------------------" << std::endl;
   std::cout << "Number of RAW-e+Jets events:" << std::endl;
   std::cout << "ttjj Acceptance Visible Ph-Sp: " << AccEvent_vis_ttjj[1] << std::endl;
-  std::cout << "ttbb Acceptance: Visible Ph-Sp" << AccEvent_vis_ttbb[1] << std::endl;
+  std::cout << "ttbb Acceptance: Visible Ph-Sp: " << AccEvent_vis_ttbb[1] << std::endl;
   std::cout << "ttbb/ttjj Visible Ph-Sp: " << 1.0*AccEvent_vis_ttbb[1]/AccEvent_vis_ttjj[1] << std::endl;
   std::cout << "-----------------------------" << std::endl;
   std::cout << "Number of RAW-l+Jets events:" << std::endl;
