@@ -59,11 +59,6 @@ void roo2Dfit(TString SystVar = ""){
   TCanvas *canvas_ratio_k = new TCanvas("canvas_ratio_k", "Parameters");
   canvas_ratio_k->Divide(2,1);
 
-  // Efficiency Ratios
-  float Eff_Ratio[3]; // Eff_ttjj/Eff_ttbb    
-  Eff_Ratio[0] = 0.4784;
-  Eff_Ratio[1] = 0.4468;
-  Eff_Ratio[2] = 0.4635;
 
     // Results
     TString ttfree_name = "ttbCon";
@@ -87,7 +82,7 @@ void roo2Dfit(TString SystVar = ""){
     ratio[ttcc]    = InFile[ttcc].events[ch]/n_ttjj; 
     ratio[ttb]     = InFile[ttb].events[ch]/n_ttjj; 
     ratio[ttccLF]  = InFile[ttccLF].events[ch]/n_ttjj; 
-    
+
     // Variables
     RooRealVar CSV2("CSV2", "CSV for Jet 3", InFile[ttbb].hist1D[0][0]->GetXaxis()->GetXmin(), InFile[ttbb].hist1D[0][0]->GetXaxis()->GetXmax()); 
     RooRealVar CSV3("CSV3", "CSV for Jet 4", InFile[ttbb].hist1D[0][0]->GetXaxis()->GetXmin(), InFile[ttbb].hist1D[0][0]->GetXaxis()->GetXmax());  
@@ -238,6 +233,9 @@ void roo2Dfit(TString SystVar = ""){
     RooArgSet *params = model.getVariables();
     params->Print("v");
 
+    // double ttb       = fit_ratio_ttb.getVal();
+    // cout << ttb << "------------------------"<< endl;
+
     double k_pf       = k.getVal();
     double k_pf_error = k.getError();
 
@@ -255,14 +253,14 @@ void roo2Dfit(TString SystVar = ""){
 
     // Efficiency Ratios
     float eff_Ratiobbjj[3]; // Eff_ttjj/Eff_ttbb    
-    eff_Ratiobbjj[0] = 0.1884 / 0.4359;
-    eff_Ratiobbjj[1] = 0.1586 / 0.3687;
-    eff_Ratiobbjj[2] = 0.1735 / 0.4022;
+    eff_Ratiobbjj[0] = 0.1885/0.4359; 
+    eff_Ratiobbjj[1] = 0.1583/0.3710;
+    eff_Ratiobbjj[2] = 0.1734/0.4034;
     // Acceptance Ratios
     float acc_Ratiobbjj[3]; // Acc_ttjj/Eff_ttbb    
-    acc_Ratiobbjj[0] = 0.2757 / 0.0804;
-    acc_Ratiobbjj[1] = 0.2747 / 0.0805;
-    acc_Ratiobbjj[2] = 0.2752 / 0.0804;
+    acc_Ratiobbjj[0] = 0.276/0.322; 
+    acc_Ratiobbjj[1] = 0.275/0.320; 
+    acc_Ratiobbjj[2] = 0.275/0.320; 
 
     float ratio_ttbb_Vis       = ratio_ttbb_pf * eff_Ratiobbjj[ch];
     float ratio_ttbb_Vis_error = ratio_ttbb_pf * eff_Ratiobbjj[ch] * (ratio_ttbb_pf_error/ratio_ttbb_pf);

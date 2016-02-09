@@ -76,9 +76,9 @@ void Plots(TString plots="2btag", bool LogScale=false){
   setuphistograms(ttbar_0_ttLF, col_ttLF);
   
   // Systematic Uncertainty
-  std::vector<histos> ttbar_syst;
-  ttbar_syst = loadhistograms(plots, files + "_ttbar_PowhegPythiaAllSystError");
-  setuphistograms(ttbar_syst, col_tt);
+  // std::vector<histos> ttbar_syst;
+  // ttbar_syst = loadhistograms(plots, files + "_ttbar_PowhegPythiaAllSystError");
+  // setuphistograms(ttbar_syst, col_tt);
 
   /****************
      Other ttbar
@@ -225,7 +225,7 @@ void Plots(TString plots="2btag", bool LogScale=false){
   //-------------------------------------------------------
   //-------------------------------------------------------
   // Systematic Uncertainties
-  ttbar_syst = addhistograms(ttbar_syst, Stack_bkg);
+  //ttbar_syst = addhistograms(ttbar_syst, Stack_bkg);
 
   
   /****************
@@ -287,8 +287,8 @@ void Plots(TString plots="2btag", bool LogScale=false){
       
       //-------------------------------------------------------
       // Band error
-      TGraphErrors *thegraph = new TGraphErrors(ttbar_syst[h].hist[ch]);
-      //TGraphErrors *thegraph = new TGraphErrors(Stack[h].hist[ch]);
+      //TGraphErrors *thegraph = new TGraphErrors(ttbar_syst[h].hist[ch]);
+      TGraphErrors *thegraph = new TGraphErrors(Stack[h].hist[ch]);
       thegraph->SetName("thegraph");
       thegraph->SetFillStyle(1001);
       thegraph->SetFillColor(chatch);
@@ -402,8 +402,8 @@ void Plots(TString plots="2btag", bool LogScale=false){
 
       TH1F *RatioSyst;
       RatioSyst = (TH1F*)Data[h].hist[ch]->Clone();
-      RatioSyst->Divide(ttbar_syst[h].hist[ch]); // Should be the histogram with the Total Syst. Unc.
-      //RatioSyst->Divide(Stack[h].hist[ch]); // Should be the histogram with the Total Syst. Unc.
+      //RatioSyst->Divide(ttbar_syst[h].hist[ch]); // Should be the histogram with the Total Syst. Unc.
+      RatioSyst->Divide(Stack[h].hist[ch]); // Should be the histogram with the Total Syst. Unc.
       std::vector<double> ratioContent;
       for(unsigned int b_r = 1; b_r <= RatioSyst->GetNbinsX(); b_r++){
 	//RatioSyst->SetBinContent(b_r,1.0);
