@@ -2,6 +2,10 @@
 
 void roo2Dfit(TString SystVar = ""){
 
+  // Results
+  // TString ttfree_name = "ttbCon";
+  TString ttfree_name = "AllMC_ttbCon";
+
   gROOT->ProcessLine(".L tdrStyle.C");
   setTDRStyle();
 
@@ -12,8 +16,8 @@ void roo2Dfit(TString SystVar = ""){
   float ratio[15];
   int colors[15];
 
-  InFile[data] = LoadSample("_DataSingleLep.root");
-
+  InFile[data] = LoadSample("_AllMC.root");
+  // InFile[data] = LoadSample("_DataSingleLep.root");
 
   InFile[ttbb]   = LoadSample("_ttbar_PowhegPythia" + SystVar + "ttbb.root");
   InFile[ttb]    = LoadSample("_ttbar_PowhegPythia" + SystVar + "ttb.root");
@@ -21,10 +25,10 @@ void roo2Dfit(TString SystVar = ""){
   InFile[ttLF]   = LoadSample("_ttbar_PowhegPythia" + SystVar + "ttLF.root"); // Includes ttc
   InFile[ttccLF] = LoadSample("_ttbar_PowhegPythia" + SystVar + "ttccLF.root");
 
-  InFile[WJets]     = LoadSample("_WJets_MCatNLO.root");
+  InFile[WJets]     = LoadSample("_WJets_MCatNLO" + SystVar + ".root");
   InFile[ZJets]     = LoadSample("_ZJets_MCatNLO.root");
-  InFile[SingleTop] = LoadSample("_SingleTop.root");
-  InFile[VV]        = LoadSample("_VV.root");
+  InFile[SingleTop] = LoadSample("_SingleTop" + SystVar + ".root");
+  InFile[VV]        = LoadSample("_VV" + SystVar + ".root");
   InFile[QCD]       = LoadSample("_QCD.root");
 
   // Add Backgrounds
@@ -59,9 +63,6 @@ void roo2Dfit(TString SystVar = ""){
   TCanvas *canvas_ratio_k = new TCanvas("canvas_ratio_k", "Parameters");
   canvas_ratio_k->Divide(2,1);
 
-
-    // Results
-    TString ttfree_name = "ttbCon";
 
     TString dirfigname_pdf;
     dirfigname_pdf = dirnameIn + "FIT-" + ttfree_name + "_figures_" + fl + SystVar + "/pdf/";
