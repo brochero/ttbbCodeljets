@@ -1,4 +1,4 @@
-#ifndef __CINT__
+//#ifndef __CINT__
 
 #include<string>
 #include<iostream>
@@ -9,7 +9,7 @@
 #include<set>
 #include<vector>
 
-#endif
+//#endif
 
 // Root
 #include "TString.h"
@@ -113,6 +113,7 @@ int main(int argc, const char* argv[]){
   gErrorIgnoreLevel = kError;
 
   gSystem->Load("libTree");
+  gROOT->ProcessLine("#include <vector>");
 
   bool   _ttbar_cat = false;
   bool   _syst      = false;
@@ -121,7 +122,7 @@ int main(int argc, const char* argv[]){
   const char * _output   = 0;
   const char * _input    = 0;
   // TopTrees directory
-  const char * _dir      = "/afs/cern.ch/user/b/brochero/brochero_WorkArea/CATTuples_Feb16/Files_v7-6-1/";
+  const char * _dir      = "/afs/cern.ch/user/b/brochero/brochero_WorkArea/CATTuples_Feb16/Files_v7-6-2/";
   const char * _syst_var = 0;
   const char * _tr       = 0;
   const char * _idiso    = 0;
@@ -200,6 +201,12 @@ int main(int argc, const char* argv[]){
 
   theTree.Add(fdir + fname + ".root");
 
+  if(!theTree.GetFile()){
+    std::cerr << "Input file not found!!!"  << std::endl;
+    std::exit(0);
+  }
+
+
   int Event,Run,Channel, GoodPV;
   float PUWeight, GENWeight; 
   std::vector<float> *PUWeight_sys=0;
@@ -218,7 +225,6 @@ int main(int argc, const char* argv[]){
   std::vector<float> *Jet_JES_Up=0, *Jet_JES_Down=0;
 
   // GEN Info
-  int  GenCat_ID;
   std::vector<int> *GenConeCat=0;
   float GenLep_pT;
   std::vector<float> *GenJet_pT=0;
@@ -292,14 +298,11 @@ int main(int argc, const char* argv[]){
   // ttbar event categorization
   if(fname.Contains("ttbar") && !fname.Contains("Bkg")){
     theTree.SetBranchAddress("scaleweight",  &ScaleWeight );
-    theTree.SetBranchAddress("gencatid",     &GenCat_ID);
     theTree.SetBranchAddress("genconecatid", &GenConeCat);
     theTree.SetBranchAddress("genlepton_pT", &GenLep_pT);
     theTree.SetBranchAddress("genjet_pT",    &GenJet_pT);
   }
 
-  else GenCat_ID = 1;
-    
   /*********************************
              Histograms
   **********************************/
@@ -594,7 +597,7 @@ int main(int argc, const char* argv[]){
     theTree.GetEntry(ievt);  
     print_progress(theTree.GetEntries(), ievt);
 
-    // PU reweight: Includes Syst. Unc.
+   // PU reweight: Includes Syst. Unc.
     if (_syst && syst_varname.Contains("PileUp")){
       if(syst_varname.Contains("PileUp_Up"))         PUWeight = (*PUWeight_sys)[1]; // Up
       else if(syst_varname.Contains("PileUp_Down"))  PUWeight = (*PUWeight_sys)[2]; // Down
@@ -605,6 +608,17 @@ int main(int argc, const char* argv[]){
     PUWeight = PUWeight * GENWeight;
     // Normalization Weight
     PUWeight = PUWeight * NormWeight;
+
+    // Scale reweight: Syst. Unc.
+    if (_syst && syst_varname.Contains("ScaleRF")){
+      if(syst_varname.Contains("ScaleRFa_Up"))        PUWeight = PUWeight*(*ScaleWeight)[0]; // Up
+      else if(syst_varname.Contains("ScaleRFb_Up"))   PUWeight = PUWeight*(*ScaleWeight)[1]; // Up
+      else if(syst_varname.Contains("ScaleRFc_Up"))   PUWeight = PUWeight*(*ScaleWeight)[2]; // Up
+      else if(syst_varname.Contains("ScaleRFa_Down")) PUWeight = PUWeight*(*ScaleWeight)[3]; // Down
+      else if(syst_varname.Contains("ScaleRFb_Down")) PUWeight = PUWeight*(*ScaleWeight)[4]; // Down
+      else if(syst_varname.Contains("ScaleRFc_Down")) PUWeight = PUWeight*(*ScaleWeight)[5]; // Down
+    }
+ 
     
     int NJets,NBtagJets, NBtagTJets;
     
@@ -643,8 +657,8 @@ int main(int argc, const char* argv[]){
 	PUWeight = PUWeight * ((*Jet_SF_CSV)[btagUnc::CENTRAL] + btagUnc);
       } // if(_syst && btag)
       else {
-	// SF estimated for jets with pT > 30GeV
-	PUWeight = PUWeight * (*Jet_SF_CSV)[btagUnc::CENTRAL];
+	// SF estimated for jets with pT > 25GeV
+	//PUWeight = PUWeight * (*Jet_SF_CSV)[btagUnc::CENTRAL];
       }
     }// if(!data)
 
@@ -726,10 +740,11 @@ int main(int argc, const char* argv[]){
     }
     
     else {
+      // Second Method: Taking SF from root file
       SFIDISOTrigger(SF_ID_ISO_Tr,
-		     Lep, Channel,
-		     hmuIDISOSF, hmuTriggerSF,
-		     heIDISOSF,  heTriggerSF);
+      		     Lep, Channel,
+      		     hmuIDISOSF, hmuTriggerSF,
+      		     heIDISOSF,  heTriggerSF);
       
       // Easiest adaptation: Create Lep_SF in the same way the Lep_SF vector
       // SF_ID_ISO_Tr = Lep_SF;
@@ -746,9 +761,9 @@ int main(int argc, const char* argv[]){
 	else if(TrUnc=="Nom")  PUWeight=PUWeight*(SF_ID_ISO_Tr[3]);	
       }// if(_tr_unc) 
       
-      //!!!!!!!!! WARNING: SF_e set to 1!!!!
+      // Check the SF_e implementation
       // If the electron is in the transition region, SF = 1
-      else  if(SF_ID_ISO_Tr[0] != 0.0 && Channel == 0)  PUWeight=PUWeight*(SF_ID_ISO_Tr[0]); 
+      else  if(SF_ID_ISO_Tr[0] != 0.0)  PUWeight=PUWeight*(SF_ID_ISO_Tr[0]); 
       
     }// else(Contain("Data"))
     
@@ -765,9 +780,6 @@ int main(int argc, const char* argv[]){
     /***************************
         ttbar Categorization
      ***************************/
-    // GenTtbarCategories
-    //if (_ttbar_cat && !ttbar_category(ttbar_id, GenCat_ID, NGenJets))  cut = -1; // Temporal check: ttjj
-    
     if (_ttbar_cat){
       // Categorization using Cone DeltaR
       // Visible Phase Space: 
