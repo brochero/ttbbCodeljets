@@ -1,4 +1,4 @@
-//#ifndef __CINT__
+#ifndef __CINT__
 
 #include<string>
 #include<iostream>
@@ -9,7 +9,7 @@
 #include<set>
 #include<vector>
 
-//#endif
+#endif
 
 // Root
 #include "TString.h"
@@ -122,7 +122,7 @@ int main(int argc, const char* argv[]){
   const char * _output   = 0;
   const char * _input    = 0;
   // TopTrees directory
-  const char * _dir      = "/afs/cern.ch/user/b/brochero/brochero_WorkArea/CATTuples_Feb16/Files_v7-6-2/";
+  const char * _dir      = "../Files_v7-6-2/";
   const char * _syst_var = 0;
   const char * _tr       = 0;
   const char * _idiso    = 0;
@@ -470,7 +470,7 @@ int main(int argc, const char* argv[]){
      SF Parametrization
   *************************/
 
-  TString fSFdir = "/afs/cern.ch/user/b/brochero/brochero_WorkArea/CATTuples_Jan16/TopCodeljets/ScaleFactors/";
+  TString fSFdir = "../TopTrees_CATuples/ScaleFactors/";
   
   TH2F *hmuIDISOSF, *hmuTriggerSF;
   TH2F *heIDISOSF,  *heTriggerSF;
@@ -578,15 +578,48 @@ int main(int argc, const char* argv[]){
   if(_ttbar_cat) fname += ttbar_id; // add in the sample name the ttbar category
 
 
-  BTagSFUtil *fBTagSF;   //The BTag SF utility
-  BTagSFUtil *fBTagSFT;   //The BTag SF utility
-  int btagSysPar=0;
   // New WP for 76X: https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation76X
-  fBTagSF = new BTagSFUtil("CSV", "Medium", btagSysPar); 
   float CSV_WP = 0.800; // Medium
-  //fBTagSF = new BTagSFUtil("CSV", "Tight", btagSysPar); 
-  //float CSV_WP = 0.935; // Tight
-  
+  int btagSysPar = 0;
+  // BTagSFUtil *fBTagSF;   //The BTag SF utility
+  // BTagSFUtil *fBTagSFT;   //The BTag SF utility
+  // fBTagSF = new BTagSFUtil("CSV", "Medium", btagSysPar); 
+  // fBTagSF = new BTagSFUtil("CSV", "Tight", btagSysPar); 
+
+  // Global SF uncertainty: 18 Components
+  if     (_syst && syst_varname.Contains("btagjes_Up"))     btagSysPar = btagUnc::JES_UP;
+  else if(_syst && syst_varname.Contains("btagjes_Down"))   btagSysPar = btagUnc::JES_DN;
+  else if(_syst && syst_varname.Contains("btaglf_Up"))      btagSysPar = btagUnc::LF_UP;
+  else if(_syst && syst_varname.Contains("btaglf_Down"))    btagSysPar = btagUnc::LF_DN;
+  else if(_syst && syst_varname.Contains("btaghf_Up"))      btagSysPar = btagUnc::HF_UP;
+  else if(_syst && syst_varname.Contains("btaghf_Down"))    btagSysPar = btagUnc::HF_DN;
+  else if(_syst && syst_varname.Contains("btaghfsI_Up"))    btagSysPar = btagUnc::HFSTAT1_UP;
+  else if(_syst && syst_varname.Contains("btaghfsI_Down"))  btagSysPar = btagUnc::HFSTAT1_DN;
+  else if(_syst && syst_varname.Contains("btaghfsII_Up"))   btagSysPar = btagUnc::HFSTAT2_UP;
+  else if(_syst && syst_varname.Contains("btaghfsII_Down")) btagSysPar = btagUnc::HFSTAT2_DN;
+  else if(_syst && syst_varname.Contains("btaglfsI_Up"))    btagSysPar = btagUnc::LFSTAT1_UP;
+  else if(_syst && syst_varname.Contains("btaglfsI_Down"))  btagSysPar = btagUnc::LFSTAT1_DN;
+  else if(_syst && syst_varname.Contains("btaglfsII_Up"))   btagSysPar = btagUnc::LFSTAT2_UP;
+  else if(_syst && syst_varname.Contains("btaglfsII_Down")) btagSysPar = btagUnc::LFSTAT2_DN;
+  else if(_syst && syst_varname.Contains("btagcfI_Up"))     btagSysPar = btagUnc::CFERR1_UP;
+  else if(_syst && syst_varname.Contains("btagcfI_Down"))   btagSysPar = btagUnc::CFERR1_DN;
+  else if(_syst && syst_varname.Contains("btagcfII_Up"))    btagSysPar = btagUnc::CFERR2_UP;
+  else if(_syst && syst_varname.Contains("btagcfII_Down"))  btagSysPar = btagUnc::CFERR2_DN;
+
+  // Scale Uncertainty
+  int scaleSysPar;
+  if     (_syst && syst_varname.Contains("ScaleRFa_Up"))   scaleSysPar = 0; // Up
+  else if(_syst && syst_varname.Contains("ScaleRFb_Up"))   scaleSysPar = 1; // Up
+  else if(_syst && syst_varname.Contains("ScaleRFc_Up"))   scaleSysPar = 2; // Up
+  else if(_syst && syst_varname.Contains("ScaleRFa_Down")) scaleSysPar = 3; // Down
+  else if(_syst && syst_varname.Contains("ScaleRFb_Down")) scaleSysPar = 4; // Down
+  else if(_syst && syst_varname.Contains("ScaleRFc_Down")) scaleSysPar = 5; // Down
+
+  // PileUp Uncertainty  
+  int pileupSysPar;
+  if     (_syst && syst_varname.Contains("PileUp_Up"))   pileupSysPar = 1; // Up
+  else if(_syst && syst_varname.Contains("PileUp_Down")) pileupSysPar = 2; // Down
+
   /********************************
              Event Loop
   ********************************/
@@ -597,11 +630,9 @@ int main(int argc, const char* argv[]){
     theTree.GetEntry(ievt);  
     print_progress(theTree.GetEntries(), ievt);
 
-   // PU reweight: Includes Syst. Unc.
-    if (_syst && syst_varname.Contains("PileUp")){
-      if(syst_varname.Contains("PileUp_Up"))         PUWeight = (*PUWeight_sys)[1]; // Up
-      else if(syst_varname.Contains("PileUp_Down"))  PUWeight = (*PUWeight_sys)[2]; // Down
-    }
+    // PU reweight: Includes Syst. Unc.
+    if (_syst && syst_varname.Contains("PileUp"))
+      PUWeight = (*PUWeight_sys)[pileupSysPar]; // Up
     else PUWeight = (*PUWeight_sys)[0];
 
     // MCatNLO GEN Weights (For MC@NLO)
@@ -610,15 +641,9 @@ int main(int argc, const char* argv[]){
     PUWeight = PUWeight * NormWeight;
 
     // Scale reweight: Syst. Unc.
-    if (_syst && syst_varname.Contains("ScaleRF")){
-      if(syst_varname.Contains("ScaleRFa_Up"))        PUWeight = PUWeight*(*ScaleWeight)[0]; // Up
-      else if(syst_varname.Contains("ScaleRFb_Up"))   PUWeight = PUWeight*(*ScaleWeight)[1]; // Up
-      else if(syst_varname.Contains("ScaleRFc_Up"))   PUWeight = PUWeight*(*ScaleWeight)[2]; // Up
-      else if(syst_varname.Contains("ScaleRFa_Down")) PUWeight = PUWeight*(*ScaleWeight)[3]; // Down
-      else if(syst_varname.Contains("ScaleRFb_Down")) PUWeight = PUWeight*(*ScaleWeight)[4]; // Down
-      else if(syst_varname.Contains("ScaleRFc_Down")) PUWeight = PUWeight*(*ScaleWeight)[5]; // Down
-    }
- 
+    if (_syst && syst_varname.Contains("ScaleRF"))
+      PUWeight = PUWeight*(*ScaleWeight)[scaleSysPar];
+    
     
     int NJets,NBtagJets, NBtagTJets;
     
@@ -645,20 +670,14 @@ int main(int argc, const char* argv[]){
     float btagUnc = 0.0;
     if (!fname.Contains("Data")){
       if(_syst && syst_varname.Contains("btag")){
-	// Add in quadrature all the syst. components  
-	if (syst_varname.Contains("btag_Up")) {
-	  for (int ssup = 1; ssup<19; ssup+=2) btagUnc += (*Jet_SF_CSV)[ssup] * (*Jet_SF_CSV)[ssup];
-	btagUnc = sqrt(btagUnc);
-	}
-	if (syst_varname.Contains("btag_Down")){
-	  for (int ssdown = 2; ssdown<19; ssdown+=2) btagUnc += (*Jet_SF_CSV)[ssdown] * (*Jet_SF_CSV)[ssdown];
-	btagUnc = -1.0*sqrt(btagUnc);
-	}
-	PUWeight = PUWeight * ((*Jet_SF_CSV)[btagUnc::CENTRAL] + btagUnc);
+	if(syst_varname.Contains("Up"))   
+	  PUWeight = PUWeight * ((*Jet_SF_CSV)[btagUnc::CENTRAL] + (*Jet_SF_CSV)[btagSysPar]);
+	if(syst_varname.Contains("Down")) 
+	  PUWeight = PUWeight * ((*Jet_SF_CSV)[btagUnc::CENTRAL] - (*Jet_SF_CSV)[btagSysPar]);
       } // if(_syst && btag)
       else {
 	// SF estimated for jets with pT > 25GeV
-	//PUWeight = PUWeight * (*Jet_SF_CSV)[btagUnc::CENTRAL];
+	PUWeight = PUWeight * (*Jet_SF_CSV)[btagUnc::CENTRAL];
       }
     }// if(!data)
 
@@ -668,7 +687,7 @@ int main(int argc, const char* argv[]){
       jet.SetPxPyPzE((*Jet_px)[ijet],(*Jet_py)[ijet],(*Jet_pz)[ijet],(*Jet_E)[ijet]);
       float jet_pT = jet.Pt(); 
       int JetFlav  = (*Jet_partonFlavour)[ijet];      
-
+      
       float JetSystVar = 1.0;
       if(_syst){
 	if(syst_varname.Contains("JES_Up")){
@@ -709,11 +728,8 @@ int main(int argc, const char* argv[]){
 	// https://twiki.cern.ch/twiki/bin/view/CMS/BTagShapeCalibration
 	btagDisc = (*Jet_CSV)[ijet] > CSV_WP;
 
-	if(btagDisc){ 
-	  bJet.push_back(true);
-	  NBtagJets++; // Number of b-tagged jets
-	} // if(b-tag)
-	else bJet.push_back(false);
+	bJet.push_back(btagDisc);
+	if(btagDisc) NBtagJets++; // Number of b-tagged jets
 		
       } // if(Jet_pT)
     }// for(jets)
@@ -825,19 +841,10 @@ int main(int argc, const char* argv[]){
     if (fname.Contains("QCD_MuEnr")    && Channel==1)  cut = -1;
     if (fname.Contains("QCD_EGEnr")    && Channel==0)  cut = -1;
 
-    // Systematics: Run exclusively over 2btag cut
-    int icut_begin = 0;
-    // if (_syst){
-    //   if(cut>1){ 
-    // 	icut_begin = 2;
-    // 	cut = 2;
-    //   }
-    //   else continue;
-    // }
     /***************************
           Loop over cuts
     ***************************/
-    for(int icut = icut_begin; icut < (cut+1); icut++){
+    for(int icut = 0; icut < (cut+1); icut++){
             
       /************************************************************
         pT reweight (Only for ttbar signal)
