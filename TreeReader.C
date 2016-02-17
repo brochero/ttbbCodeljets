@@ -607,13 +607,14 @@ int main(int argc, const char* argv[]){
   else if(_syst && syst_varname.Contains("btagcfII_Down"))  btagSysPar = btagUnc::CFERR2_DN;
 
   // Scale Uncertainty
+  // From: https://indico.cern.ch/event/494682/contribution/2/attachments/1223578/1800218/mcaod-Feb15-2016.pdf
   int scaleSysPar;
-  if     (_syst && syst_varname.Contains("ScaleRFa_Up"))   scaleSysPar = 0; // Up
-  else if(_syst && syst_varname.Contains("ScaleRFb_Up"))   scaleSysPar = 1; // Up
-  else if(_syst && syst_varname.Contains("ScaleRFc_Up"))   scaleSysPar = 2; // Up
-  else if(_syst && syst_varname.Contains("ScaleRFa_Down")) scaleSysPar = 3; // Down
-  else if(_syst && syst_varname.Contains("ScaleRFb_Down")) scaleSysPar = 4; // Down
-  else if(_syst && syst_varname.Contains("ScaleRFc_Down")) scaleSysPar = 5; // Down
+  if     (_syst && syst_varname.Contains("ScaleRnF_Up"))   scaleSysPar = 0; // muR=Nom,  muF=Up
+  else if(_syst && syst_varname.Contains("ScaleRnF_Down")) scaleSysPar = 1; // muR=Nom,  muF=Down
+  else if(_syst && syst_varname.Contains("ScaleRuF_Nom"))  scaleSysPar = 2; // muR=Up,   muF=Nom
+  else if(_syst && syst_varname.Contains("ScaleRuF_Up"))   scaleSysPar = 3; // muR=Up,   muF=Up
+  else if(_syst && syst_varname.Contains("ScaleRdF_Nom"))  scaleSysPar = 4; // muR=Down, muF=Nom
+  else if(_syst && syst_varname.Contains("ScaleRdF_Down")) scaleSysPar = 5; // muR=Down, muF=Down
 
   // PileUp Uncertainty  
   int pileupSysPar;
@@ -670,7 +671,7 @@ int main(int argc, const char* argv[]){
     float btagUnc = 0.0;
     if (!fname.Contains("Data")){
       if(_syst && syst_varname.Contains("btag")){
-	if(syst_varname.Contains("Up"))   
+	if(syst_varname.Contains("Up"))
 	  PUWeight = PUWeight * ((*Jet_SF_CSV)[btagUnc::CENTRAL] + (*Jet_SF_CSV)[btagSysPar]);
 	if(syst_varname.Contains("Down")) 
 	  PUWeight = PUWeight * ((*Jet_SF_CSV)[btagUnc::CENTRAL] - (*Jet_SF_CSV)[btagSysPar]);
@@ -1092,12 +1093,20 @@ int main(int argc, const char* argv[]){
     else if(systname.Contains("LES"))        systsource = 2;
     else if(systname.Contains("JES"))        systsource = 3;
     else if(systname.Contains("JER"))        systsource = 4;
-    else if(systname.Contains("btag"))       systsource = 5;
-    else if(systname.Contains("PU"))         systsource = 6;
+    else if(systname.Contains("PileUp"))     systsource = 6;
     else if(systname.Contains("Scale"))      systsource = 7;
     else if(systname.Contains("Matching"))   systsource = 8;
     else if(systname.Contains("pTReweight")) systsource = 9;
     else if(systname.Contains("Powheg"))     systsource = 10;
+    else if(systname.Contains("btagjes"))    systsource = 11;
+    else if(systname.Contains("btaglf"))     systsource = 12;
+    else if(systname.Contains("btaghf"))     systsource = 13;
+    else if(systname.Contains("btaghfsI"))   systsource = 14;
+    else if(systname.Contains("btaghfsII"))  systsource = 16;
+    else if(systname.Contains("btaglfsI"))   systsource = 17;
+    else if(systname.Contains("btaglfsII"))  systsource = 18;
+    else if(systname.Contains("btagcfI"))    systsource = 19;
+    else if(systname.Contains("btagcfII"))   systsource = 20;
 
     // Systematic Uncertainty Estimations
     // make a dir if it does not exist!!
