@@ -3,8 +3,8 @@
 void roo2Dfit(TString SystVar = ""){
 
   // Results
-  // TString ttfree_name = "ttbCon";
-  TString ttfree_name = "AllMC_ttbCon";
+  TString ttfree_name = "ttbCon";
+  //TString ttfree_name = "AllMC_ttbCon";
 
   gROOT->ProcessLine(".L tdrStyle.C");
   setTDRStyle();
@@ -16,8 +16,8 @@ void roo2Dfit(TString SystVar = ""){
   float ratio[15];
   int colors[15];
 
-  InFile[data] = LoadSample("_AllMC.root");
-  // InFile[data] = LoadSample("_DataSingleLep.root");
+  //InFile[data] = LoadSample("_AllMC.root");
+  InFile[data] = LoadSample("_DataSingleLep.root");
 
   InFile[ttbb]   = LoadSample("_ttbar_PowhegPythia" + SystVar + "ttbb.root");
   InFile[ttb]    = LoadSample("_ttbar_PowhegPythia" + SystVar + "ttb.root");
@@ -25,15 +25,15 @@ void roo2Dfit(TString SystVar = ""){
   InFile[ttLF]   = LoadSample("_ttbar_PowhegPythia" + SystVar + "ttLF.root"); // Includes ttc
   InFile[ttccLF] = LoadSample("_ttbar_PowhegPythia" + SystVar + "ttccLF.root");
 
-  InFile[WJets]     = LoadSample("_WJets_MCatNLO" + SystVar + ".root");
+  InFile[WJets]     = LoadSample("_WJets_MCatNLO.root");
   InFile[ZJets]     = LoadSample("_ZJets_MCatNLO.root");
   InFile[SingleTop] = LoadSample("_SingleTop" + SystVar + ".root");
-  InFile[VV]        = LoadSample("_VV" + SystVar + ".root");
+  InFile[VV]        = LoadSample("_VV.root");
   InFile[QCD]       = LoadSample("_QCD.root");
 
   // Add Backgrounds
   InFile[Bkgtt]    = LoadSample("_ttbar_PowhegPythia" + SystVar + "Bkgtt.root"); // ttbarBkg + tt
-  InFile[BkgOther] = LoadSample("_BkgOther.root"); 
+  InFile[BkgOther] = LoadSample("_BkgOther" + SystVar + ".root"); 
   InFile[BkgFull]  = LoadSample("_BkgFull" + SystVar + ".root"); // BkgOther + Bkgtt
 
 
@@ -89,8 +89,8 @@ void roo2Dfit(TString SystVar = ""){
     RooRealVar CSV3("CSV3", "CSV for Jet 4", InFile[ttbb].hist1D[0][0]->GetXaxis()->GetXmin(), InFile[ttbb].hist1D[0][0]->GetXaxis()->GetXmax());  
     
     // Ratio at RECO level
-    RooRealVar RECO_ratio_ttbb  ("RECO_ratio_ttbb",   "RECO ratio ttbb/ttjj",   ratio[ttbb]);//,   ratio[ttbb],    ratio[ttbb]);
-    RooRealVar RECO_ratio_ttb   ("RECO_ratio_ttb",    "RECO ratio ttb/ttjj",    ratio[ttb]);//,    ratio[ttb],     ratio[ttb]);
+    RooRealVar RECO_ratio_ttbb  ("RECO_ratio_ttbb",   "RECO ratio ttbb/ttjj",   ratio[ttbb],   ratio[ttbb],    ratio[ttbb]);
+    RooRealVar RECO_ratio_ttb   ("RECO_ratio_ttb",    "RECO ratio ttb/ttjj",    ratio[ttb],    ratio[ttb],     ratio[ttb]);
     RooRealVar RECO_ratio_ttcc  ("RECO_ratio_ttcc",   "RECO ratio ttcc/ttjj",   ratio[ttcc],   ratio[ttcc],    ratio[ttcc]);
     RooRealVar RECO_ratio_ttccLF("RECO_ratio_ttccLF", "RECO ratio ttccLF/ttjj", ratio[ttccLF], ratio[ttccLF] , ratio[ttccLF]);
 
@@ -103,7 +103,7 @@ void roo2Dfit(TString SystVar = ""){
     RooFormulaVar fit_ratio_ttbb_con("fit_ratio_ttbb_con", "FITTED ratio ttbb/ttjj contrained", "@0/@1*@2", RooArgList(fit_ratio_ttbb, RECO_ratio_ttbb, RECO_ratio_ttb));
 
     // Normalization Constant
-    RooRealVar k("k", "Normalization factor", 0.95, 0.90, 1.05);
+    RooRealVar k("k", "Normalization factor", 1.0, 0.50, 1.50);
 
     // Background
     RooRealVar  fit_ratio_Bkgtt   ("fit_ratio_Bkgtt",    "FITTED ratio bkgtt/FullBkg",    0.4, 0.0, 1.0); 
@@ -167,7 +167,8 @@ void roo2Dfit(TString SystVar = ""){
 
     RooAddPdf model ("model", "Model For Signal + Background", 
     		     RooArgList(model_ttjj, Bkgtt_hispdf, BkgOther_hispdf), 
-    		     RooArgList(kn_ttjj_var, kn_Bkgtt_var, kn_BkgOther_var)); 
+    		     RooArgList(kn_ttjj_var, n_Bkgtt_var, n_BkgOther_var)); 
+    //RooArgList(kn_ttjj_var, n_Bkgtt_var, n_BkgOther_var)); 
 
     model.fitTo(data_his);
 
@@ -177,9 +178,11 @@ void roo2Dfit(TString SystVar = ""){
     RooPlot *CSV2Tot_f = CSV2.frame();
     RooPlot *CSV3Tot_f = CSV3.frame();
 
+    ttbb_his.plotOn(CSV2Tot_f,LineColor(0),MarkerSize(0)); //Scale PDF
     model.plotOn (CSV2Tot_f, Components(RooArgSet(ttbb_hispdf, ttb_hispdf, ttccLF_hispdf)), LineColor(colors[ttjj]), RooFit::Name("CSV2Tot_f_ttjj"));
     model.plotOn (CSV2Tot_f, Components(RooArgSet(Bkgtt_hispdf, BkgOther_hispdf)), LineColor(colors[BkgFull]), LineStyle(kDashed), RooFit::Name("CSV2Tot_f_BkgFull"));
 
+    ttbb_his.plotOn(CSV3Tot_f,LineColor(0),MarkerSize(0)); //Scale PDF
     model.plotOn(CSV3Tot_f, Components(RooArgSet(ttbb_hispdf, ttb_hispdf, ttccLF_hispdf)), LineColor(colors[ttjj]));
     model.plotOn(CSV3Tot_f, Components(RooArgSet(Bkgtt_hispdf, BkgOther_hispdf)), LineColor(colors[BkgFull]), LineStyle(kDashed));
 
@@ -187,10 +190,12 @@ void roo2Dfit(TString SystVar = ""){
     RooPlot *CSV2_f = CSV2.frame();
     RooPlot *CSV3_f = CSV3.frame();
 
+    ttbb_his.plotOn(CSV2_f,LineColor(0),MarkerSize(0)); //Scale PDF
     model.plotOn(CSV2_f, Components(RooArgSet(ttbb_hispdf)),   LineColor(colors[ttbb]),   RooFit::Name("CSV2_f_ttbb"));
     model.plotOn(CSV2_f, Components(RooArgSet(ttb_hispdf)),    LineColor(colors[ttb]),    RooFit::Name("CSV2_f_ttb"));
     model.plotOn(CSV2_f, Components(RooArgSet(ttccLF_hispdf)), LineColor(colors[ttccLF]), RooFit::Name("CSV2_f_ttccLF"));
 
+    ttbb_his.plotOn(CSV3_f,LineColor(0),MarkerSize(0)); //Scale PDF
     model.plotOn(CSV3_f, Components(RooArgSet(ttbb_hispdf)),   LineColor(colors[ttbb]));
     model.plotOn(CSV3_f, Components(RooArgSet(ttb_hispdf)),    LineColor(colors[ttb]));
     model.plotOn(CSV3_f, Components(RooArgSet(ttccLF_hispdf)), LineColor(colors[ttccLF]));
@@ -261,7 +266,8 @@ void roo2Dfit(TString SystVar = ""){
     float acc_Ratiobbjj[3]; // Acc_ttjj/Eff_ttbb    
     acc_Ratiobbjj[0] = 0.276/0.322; 
     acc_Ratiobbjj[1] = 0.275/0.320; 
-    acc_Ratiobbjj[2] = 0.275/0.320; 
+    //acc_Ratiobbjj[2] = 0.275/0.320; 
+    acc_Ratiobbjj[2] = 0.094428/0.109935; // Includes ttjj events in all channels
 
     float ratio_ttbb_Vis       = ratio_ttbb_pf * eff_Ratiobbjj[ch];
     float ratio_ttbb_Vis_error = ratio_ttbb_pf * eff_Ratiobbjj[ch] * (ratio_ttbb_pf_error/ratio_ttbb_pf);
@@ -281,6 +287,7 @@ void roo2Dfit(TString SystVar = ""){
     
     canvas_comp->cd(1);
     CSV2Tot_f->Draw();
+    CSV2Tot_f->SetMaximum(80);
     legCSV2Tot_f->Draw("SAME");
 
     canvas_comp->cd(2);
@@ -295,15 +302,15 @@ void roo2Dfit(TString SystVar = ""){
 
     canvas_comp->cd(3);
     canvas_comp->cd(3)->SetLogy();
-    CSV2_f->SetMinimum(1.e-7);
-    CSV2_f->SetMaximum(0.1);
+    CSV2_f->SetMinimum(1.e-3);
+    CSV2_f->SetMaximum(10000);
     CSV2_f->Draw();
     legCSV2_f->Draw("SAME");
 
     canvas_comp->cd(4);
     canvas_comp->cd(4)->SetLogy();
-    CSV3_f->SetMinimum(1.e-7);
-    CSV3_f->SetMaximum(0.1);
+    CSV3_f->SetMinimum(1.e-3);
+    CSV3_f->SetMaximum(500);
     CSV3_f->Draw();
 
 

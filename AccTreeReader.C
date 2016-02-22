@@ -98,7 +98,7 @@ int main(int argc, const char* argv[]){
   const char * _output   = 0;
   const char * _input    = 0;
   // TopTrees directory
-  const char * _dir      = "/afs/cern.ch/user/b/brochero/brochero_WorkArea/CATTuples_Feb16/Files_v7-6-1/";
+  const char * _dir      = "../Files_v7-6-2/";
   const char * _tr       = 0;
   const char * _idiso    = 0;
   const char * _ttbar_id = 0;

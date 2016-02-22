@@ -43,9 +43,9 @@ void IncludeSystPlots( TString ttbarCat = "ttbb", TString plots="2btag"){
   Sample_btag_Down = loadhistograms(plots, files + "_ttbar_PowhegPythia_SYS_btag_Down" + ttbarCat);
   // Scale
   std::vector<histos> Sample_Scale_Up;
-  Sample_Scale_Up = loadhistograms(plots, files + "_ttbar_PowhegPythia_SYS_Scale_Up" + ttbarCat);
+  Sample_Scale_Up = loadhistograms(plots, files + "_ttbar_PowhegPythia_SYS_JES_Up" + ttbarCat);
   std::vector<histos> Sample_Scale_Down;
-  Sample_Scale_Down = loadhistograms(plots, files + "_ttbar_PowhegPythia_SYS_Scale_Down" + ttbarCat);
+  Sample_Scale_Down = loadhistograms(plots, files + "_ttbar_PowhegPythia_SYS_JES_Down" + ttbarCat);
   
   for(unsigned int h = 0; h < Sample.size(); h++){
     for(unsigned int ch=0; ch<2; ch++){// Only mu+Jets and e+Jets  
@@ -70,11 +70,16 @@ void IncludeSystPlots( TString ttbarCat = "ttbb", TString plots="2btag"){
         float Scale_Down = Sample_Scale_Down[h].hist[ch]->GetBinContent(ibin);
 
 	
-	float PileUp  = max(abs(central - PileUp_Up)/central,  abs(central - PileUp_Down)/central);
-	float JES  = max(abs(central - JES_Up)/central,  abs(central - JES_Down)/central);
-	float JER  = max(abs(JER_Nom - JER_Up)/JER_Nom,  abs(JER_Nom - JER_Down)/JER_Nom);
-	float btag = max(abs(central - btag_Up)/central, abs(central - btag_Down)/central);
-	float Scale = max(abs(central - Scale_Up)/central, abs(central - Scale_Down)/central);
+	float PileUp = 0.0;
+	if(central !=0.0) PileUp = max(abs(central - PileUp_Up)/central,  abs(central - PileUp_Down)/central);
+	float JES = 0.0;
+	if(central !=0.0) JES = max(abs(central - JES_Up)/central,  abs(central - JES_Down)/central);
+	float JER = 0.0;
+	if(JER_Nom !=0.0) JER = max(abs(JER_Nom - JER_Up)/JER_Nom,  abs(JER_Nom - JER_Down)/JER_Nom);
+	float btag = 0.0;
+	if(central !=0.0) btag = max(abs(central - btag_Up)/central, abs(central - btag_Down)/central);
+	float Scale = 0.0;
+	if(central !=0.0) Scale = max(abs(central - Scale_Up)/central, abs(central - Scale_Down)/central);
 
 	float Stat  = Sample[h].hist[ch]->GetBinError(ibin);
 	float Syst  = sqrt(PileUp**2 + JES**2 + JER**2 + btag**2 + Scale**2)*Sample[h].hist[ch]->GetBinContent(ibin);
@@ -145,7 +150,7 @@ std::vector<histos> loadhistograms(TString plots, TString namefile){
 void overwritehistograms(std::vector<histos> newhistos, TString plots, TString namefile){
 
   TFile *file=NULL; // new TFile(namefile);
-  file = TFile::Open(namefile + "SystError.root", "RECREATE");
+  file = TFile::Open(namefile + "SystError_" + plots + ".root", "RECREATE");
   
   if(!file){
     std::cerr << "ERROR: Could not open " <<  namefile  << " files!!!"  << std::endl;

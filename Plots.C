@@ -77,7 +77,7 @@ void Plots(TString plots="2btag", bool LogScale=false){
   
   // Systematic Uncertainty
   // std::vector<histos> ttbar_syst;
-  // ttbar_syst = loadhistograms(plots, files + "_ttbar_PowhegPythiaAllSystError");
+  // ttbar_syst = loadhistograms(plots, files + "_ttbar_PowhegPythiaAllSyst");
   // setuphistograms(ttbar_syst, col_tt);
 
   /****************
@@ -185,7 +185,6 @@ void Plots(TString plots="2btag", bool LogScale=false){
   Stack_bkg = addstack(Stack_bkg, VV);
   Stack_bkg = addstack(Stack_bkg, ttbar_bkg);
   Stack_bkg = addstack(Stack_bkg, ZJets);
-
   //-------------------------------------------------------
   // Stack
   // Stack = addstack(Stack, WJets);
@@ -225,7 +224,7 @@ void Plots(TString plots="2btag", bool LogScale=false){
   //-------------------------------------------------------
   //-------------------------------------------------------
   // Systematic Uncertainties
-  //ttbar_syst = addhistograms(ttbar_syst, Stack_bkg);
+  //ttbar_syst = addhistograms(ttbar_syst, );
 
   
   /****************
@@ -406,8 +405,7 @@ void Plots(TString plots="2btag", bool LogScale=false){
       RatioSyst->Divide(Stack[h].hist[ch]); // Should be the histogram with the Total Syst. Unc.
       std::vector<double> ratioContent;
       for(unsigned int b_r = 1; b_r <= RatioSyst->GetNbinsX(); b_r++){
-	//RatioSyst->SetBinContent(b_r,1.0);
-	//RatioSyst->SetBinError(b_r,0.15); // Tempotal!!!
+	RatioSyst->SetBinContent(b_r,1.0);
       }      
 
       Ratio->SetMarkerStyle(20);

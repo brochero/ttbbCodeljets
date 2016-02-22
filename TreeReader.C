@@ -279,9 +279,11 @@ int main(int argc, const char* argv[]){
   TH1F *h_NumberEvt;
   h_NumberEvt = (TH1F*)fileEntries->Get("ttbbLepJets/EventInfo");
 
-  float NTotal_Event, NTotal_Weight, nNorm_Event;
+  float NTotal_Event, NTotal_Weight, nNorm_Event, NTotal_ScalemuRF_Weight[6];
   NTotal_Event  = h_NumberEvt->GetBinContent(1);
   NTotal_Weight = h_NumberEvt->GetBinContent(2);
+  for (unsigned int ibin = 0; ibin< 6; ibin++) NTotal_ScalemuRF_Weight[ibin]= h_NumberEvt->GetBinContent(ibin + 9);
+
 
   /************************
       MCatNLO Weights
@@ -325,6 +327,7 @@ int main(int argc, const char* argv[]){
   TH1F *hSFpT[4][2], *hSFpTError[4][2];
   TH1F *hSFIDISO[4][2], *hSFIDISOError[4][2];
   TH1F *hSFTrigger[4][2], *hSFTriggerError[4][2];
+  TH2F *h2DSFbtag_Global[4][2];
   TH1F *hSFbtag_Global[4][2], *hSFbtag_Global_var[4][2];
   TH2F *h2DSFbtag_b[4][2], *h2DSFbtag_c[4][2], *h2DSFbtag_l[4][2], *h2DSFbtag_btag_b[4][2], *h2DSFbtag_btag_c[4][2], *h2DSFbtag_btag_l[4][2]; 
 
@@ -404,6 +407,7 @@ int main(int argc, const char* argv[]){
       /***************************
               SF(b-tag)
       ***************************/
+      h2DSFbtag_Global[j][i]     = new TH2F("h2DSFbtag_Global_"+namech[i]+"_"+namecut[j], "Global SF_{b-tag} Vs  #Delta SF_{b-tag} " + titlenamech[i], 40, 0.0, 4.0, 50, 0.0, 0.5);
       hSFbtag_Global[j][i]     = new TH1F("hSFbtag_Global_"+namech[i]+"_"+namecut[j], "Global SF_{b-tag} " + titlenamech[i],40.0, 0.0, 4.0);
       hSFbtag_Global_var[j][i] = new TH1F("hSFbtag_Global_var_"+namech[i]+"_"+namecut[j], "Global #Delta SF_{b-tag} " + titlenamech[i],20.0, 0.0, 1.0);
 
@@ -530,19 +534,6 @@ int main(int argc, const char* argv[]){
 			0.0,0.0,0.0,0.0,
 			0.0,0.0,0.0,0.0};
   
-  /************************
-    Normalization Weights
-  *************************/
-  
-  float NormWeight = 0.0;
-  // NormWeight = Lumi*(1.0/N_Gen_events)*(Xsec)
-  NormWeight = SFLumi(fname, 2260, nNorm_Event);  
-
-  std::cout << "-----------------------                                 -------------------------" << std::endl;
-  std::cout << "Number of Events     = " << nNorm_Event << std::endl;
-  std::cout << "Normalization Factor = " << NormWeight  << std::endl;
-  std::cout << "---------------------------------------------------------------------------------" << std::endl;
-
   /********************************
       pT Reweight; <SF_pT> 
    *******************************/
@@ -615,19 +606,39 @@ int main(int argc, const char* argv[]){
   else if(_syst && syst_varname.Contains("ScaleRuF_Up"))   scaleSysPar = 3; // muR=Up,   muF=Up
   else if(_syst && syst_varname.Contains("ScaleRdF_Nom"))  scaleSysPar = 4; // muR=Down, muF=Nom
   else if(_syst && syst_varname.Contains("ScaleRdF_Down")) scaleSysPar = 5; // muR=Down, muF=Down
-
+  // Normalization for Scale Weights:
+  if (_syst && syst_varname.Contains("Scale")){
+    if(scaleSysPar < 6) nNorm_Event = NTotal_ScalemuRF_Weight[scaleSysPar];
+    else{
+      std::cerr << "No entry for Scale normalization! Check HISTO!"  << std::endl;
+      std::exit(0);
+    }
+  }
   // PileUp Uncertainty  
   int pileupSysPar;
   if     (_syst && syst_varname.Contains("PileUp_Up"))   pileupSysPar = 1; // Up
   else if(_syst && syst_varname.Contains("PileUp_Down")) pileupSysPar = 2; // Down
 
+  /************************
+    Normalization Weights
+  *************************/  
+  float NormWeight = 0.0;
+  // NormWeight = Lumi*(1.0/N_Gen_events)*(Xsec)
+  NormWeight = SFLumi(fname, 2260, nNorm_Event);  
+
+  std::cout << "-----------------------                                 -------------------------" << std::endl;
+  std::cout << "Number of Events     = " << nNorm_Event << std::endl;
+  std::cout << "Normalization Factor = " << NormWeight  << std::endl;
+  std::cout << "---------------------------------------------------------------------------------" << std::endl;
+
+
   /********************************
              Event Loop
   ********************************/
   std::cout << "--- Processing: " << theTree.GetEntries() << " events" << std::endl;
-
+  
   for (Long64_t ievt=0; ievt<theTree.GetEntries();ievt++) {
-     
+    
     theTree.GetEntry(ievt);  
     print_progress(theTree.GetEntries(), ievt);
 
@@ -635,12 +646,12 @@ int main(int argc, const char* argv[]){
     if (_syst && syst_varname.Contains("PileUp"))
       PUWeight = (*PUWeight_sys)[pileupSysPar]; // Up
     else PUWeight = (*PUWeight_sys)[0];
-
+    
     // MCatNLO GEN Weights (For MC@NLO)
     PUWeight = PUWeight * GENWeight;
     // Normalization Weight
     PUWeight = PUWeight * NormWeight;
-
+    
     // Scale reweight: Syst. Unc.
     if (_syst && syst_varname.Contains("ScaleRF"))
       PUWeight = PUWeight*(*ScaleWeight)[scaleSysPar];
@@ -651,37 +662,40 @@ int main(int argc, const char* argv[]){
     TLorentzVector Lep;
     std::vector<int>  JetIndex;
     std::vector<bool> bJet;
-         
+    
     Lep.SetPxPyPzE(Lep_px,Lep_py,Lep_pz,Lep_E);
     if(Lep.Pt() < 30)  continue; // Lep pT >30GeV
-
+    
     // Transverse W Mass
     TLorentzVector METv;
     METv.SetPtEtaPhiE(MET,0.0,MET_Phi,MET);
-
+    
     float mT = sqrt(2*MET*Lep.Pt()*(1.0-cos( Lep.DeltaPhi(METv) )));
-
+    
     // Jets 
     NJets      = 0;
     NBtagJets  = 0;
-
+    
     // Global SF_b-tag
+    float btagUnc_val = 0.0;
     // From: https://twiki.cern.ch/twiki/bin/view/CMS/BTagShapeCalibration
     //btagUnc btagvar;
-    float btagUnc = 0.0;
     if (!fname.Contains("Data")){
       if(_syst && syst_varname.Contains("btag")){
 	if(syst_varname.Contains("Up"))
-	  PUWeight = PUWeight * ((*Jet_SF_CSV)[btagUnc::CENTRAL] + (*Jet_SF_CSV)[btagSysPar]);
+	  btagUnc_val = 1.0 * (*Jet_SF_CSV)[btagSysPar];
 	if(syst_varname.Contains("Down")) 
-	  PUWeight = PUWeight * ((*Jet_SF_CSV)[btagUnc::CENTRAL] - (*Jet_SF_CSV)[btagSysPar]);
+	  btagUnc_val = -1.0 * (*Jet_SF_CSV)[btagSysPar];
+	
+	PUWeight = PUWeight * ((*Jet_SF_CSV)[btagUnc::CENTRAL] + btagUnc_val);
+	
       } // if(_syst && btag)
       else {
 	// SF estimated for jets with pT > 25GeV
 	PUWeight = PUWeight * (*Jet_SF_CSV)[btagUnc::CENTRAL];
       }
     }// if(!data)
-
+    
     for(int ijet=0; ijet < Jet_px->size(); ijet++){
       
       TLorentzVector jet;
@@ -903,12 +917,14 @@ int main(int argc, const char* argv[]){
       /******************
           Jets Var.
       ******************/
-      hSFbtag_Global[icut][Channel]->Fill((*Jet_SF_CSV)[btagUnc::CENTRAL], PUWeight);
-      hSFbtag_Global_var[icut][Channel]->Fill(btagUnc, PUWeight);
-      
       hNJets[icut][Channel]->Fill(NJets,PUWeight); 
       hNBtagJets[icut][Channel]->Fill(NBtagJets,PUWeight);
 
+      // Global btag SF
+      h2DSFbtag_Global[icut][Channel]->Fill((*Jet_SF_CSV)[btagUnc::CENTRAL], btagUnc_val, PUWeight);
+      hSFbtag_Global[icut][Channel]->Fill((*Jet_SF_CSV)[btagUnc::CENTRAL], PUWeight);
+      hSFbtag_Global_var[icut][Channel]->Fill(btagUnc_val, PUWeight);
+      
       // CSV discriminant for 3rd and 4th Jet
       if(JetIndex.size() > 3)  h2DCSV_23Jet[icut][Channel]->Fill((*Jet_CSV)[JetIndex[2]], (*Jet_CSV)[JetIndex[3]], PUWeight);
 
@@ -1171,6 +1187,7 @@ int main(int argc, const char* argv[]){
       hNBtagJets[j][i]->Write();            
       h2DCSV_23Jet[j][i]->Write();
       
+      h2DSFbtag_Global[j][i]->Write();
       hSFbtag_Global[j][i]->Write();
       hSFbtag_Global_var[j][i]->Write();
 

@@ -101,7 +101,7 @@ void PlotsSyst(TString plots="2btag", bool LogScale=false, TString nSyst = ""){
       float MaxHisto;
 
       if(LogScale) MaxHisto = 8;
-      else MaxHisto = 1.4;
+      else MaxHisto = 1.4; 
       float maxh;
       maxh = ttOther[h].hist[ch]->GetMaximum();
       if (maxh < ttbar_0_ttbb[h].hist[ch]->GetMaximum()) maxh = ttbar_0_ttbb[h].hist[ch]->GetMaximum();

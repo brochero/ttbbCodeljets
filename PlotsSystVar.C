@@ -53,6 +53,7 @@ void PlotsSystVar(TString plots="2btag", bool LogScale=false, TString cat = "ttb
     for(int ch=0; ch<3; ch++){
       
       histocanvas->cd();
+      if(LogScale) histocanvas->cd()->SetLogy();
 
       ttbar_Nom[h].hist[ch]->GetXaxis()->SetRange(ttbar_Nom[h].hist[ch]->GetXaxis()->GetFirst(), 
 						ttbar_Nom[h].hist[ch]->GetXaxis()->GetLast());
@@ -71,12 +72,17 @@ void PlotsSystVar(TString plots="2btag", bool LogScale=false, TString cat = "ttb
 
       // Produce enough vertical space for the legend 
       float MaxHisto;
-      if(LogScale) MaxHisto = 100.0;
-      else MaxHisto = 1.7;
-      float maxh = 0.5;
-      ttbar_Nom[h].hist[ch]->SetMaximum(maxh);
-      if(LogScale) ttbar_Nom[h].hist[ch]->SetMinimum(0.1);
-
+      if(LogScale) MaxHisto = 8.0;
+      else MaxHisto = 1.4;
+            float maxh;
+	    maxh = ttbar_Nom[h].hist[ch]->GetMaximum();
+	    if (maxh < ttbar_Up[h].hist[ch]->GetMaximum()) maxh = ttbar_Up[h].hist[ch]->GetMaximum();
+	    if (maxh < ttbar_Down[h].hist[ch]->GetMaximum()) maxh = ttbar_Down[h].hist[ch]->GetMaximum();
+	    
+      ttbar_Nom[h].hist[ch]->SetMaximum(MaxHisto*maxh);
+      
+      //ttbar_Nom[h].hist[ch]->SetMinimum(0.1);
+      
       ttbar_Nom[h].hist[ch]->Draw("hist");
       ttbar_Up[h].hist[ch]->Draw("histSAME");
       ttbar_Down[h].hist[ch]->Draw("histSAME");
@@ -154,7 +160,7 @@ void PlotsSystVar(TString plots="2btag", bool LogScale=false, TString cat = "ttb
       else dirfigname_log = "";
       TString dirfigname_pdf;
       TString dirfigname_png;
-      dirfigname_pdf = dirnameIn + "figuresSystComp_" + fl + "/ttbbNomUpDown_" + cat + "/pdf" + dirfigname_log + "/";
+      dirfigname_pdf = dirnameIn + "figuresNomUpDown_" + fl + "/ttbbNomUpDown_" + cat + "/pdf" + dirfigname_log + "/";
       //dirfigname_png = dirnameIn + "figuresSystComp_" + fl + "/ttbb/png" + dirfigname_log + "/";
       // make a dir if it does not exist!!
       gSystem->mkdir(dirfigname_pdf,       kTRUE);

@@ -61,11 +61,15 @@ void IncludeSystPlotsBkg( TString SampleName = "", TString plots="2btag"){
 	float btag_Up   = Sample_btag_Up[h].hist[ch]->GetBinContent(ibin);
 	float btag_Down = Sample_btag_Down[h].hist[ch]->GetBinContent(ibin);
 	
-	float PileUp = max(abs(central - PileUp_Up)/central,  abs(central - PileUp_Down)/central);
-	float JES    = max(abs(central - JES_Up)/central,  abs(central - JES_Down)/central);
-	float JER    = max(abs(JER_Nom - JER_Up)/JER_Nom,  abs(JER_Nom - JER_Down)/JER_Nom);
-	float btag   = max(abs(central - btag_Up)/central, abs(central - btag_Down)/central);
-
+	float PileUp=0.0;
+	if(central != 0.0) PileUp = max(abs(central - PileUp_Up)/central,  abs(central - PileUp_Down)/central);
+	float JES=0.0;
+	if(central != 0.0) JES = max(abs(central - JES_Up)/central,  abs(central - JES_Down)/central);
+	float JER=0.0;
+	if(JER_Nom != 0.0)  JER    = max(abs(JER_Nom - JER_Up)/JER_Nom,  abs(JER_Nom - JER_Down)/JER_Nom);
+	float btag=0.0;
+	if(central != 0.0)  btag   = max(abs(central - btag_Up)/central, abs(central - btag_Down)/central);
+	
 	float Stat  = Sample[h].hist[ch]->GetBinError(ibin);
 	float Syst  = sqrt(PileUp**2 + JES**2 + JER**2 + btag**2)*Sample[h].hist[ch]->GetBinContent(ibin);
 	float Total = sqrt(Syst**2 + Stat**2); 
@@ -135,7 +139,7 @@ std::vector<histos> loadhistograms(TString plots, TString namefile){
 void overwritehistograms(std::vector<histos> newhistos, TString plots, TString namefile){
 
   TFile *file=NULL; // new TFile(namefile);
-  file = TFile::Open(namefile + "SystError.root", "RECREATE");
+  file = TFile::Open(namefile + "SystError_" + plots + ".root", "RECREATE");
   
   if(!file){
     std::cerr << "ERROR: Could not open " <<  namefile  << " files!!!"  << std::endl;

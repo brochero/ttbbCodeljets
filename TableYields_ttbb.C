@@ -3,7 +3,8 @@
 //#include "/home/brochero/ttbar/TopCodeljets/TopResults/Yields_CSVT-v0/Yields.h" //Yields
 //#include "/home/brochero/ttbar/TopCodeljets/TopResults/Yields_FullLumi-v3/Yields.h" //Yields
 //#include "/home/brochero/ttbar/TopCodeljets/TopResults/Yields_6Jets_2btagM_1btagT/Yields.h" //Yields
-#include "/home/brochero/ttbar/ttbbCodeljets/TopResults/Yields_Lumi2260-v3/Yields.h" //Yields
+//#include "/home/brochero/ttbar/ttbbCodeljets/TopResults/Yields_Lumi2260-v3/Yields.h" //Yields
+#include "/home/brochero/ttbar/ttbbCodeljets/TopResults/Yields_paJet25GeV-v0/Yields.h" //Yields
 
 void TableYields_ttbb(bool Isttbb = true){
 
@@ -14,7 +15,7 @@ void TableYields_ttbb(bool Isttbb = true){
   
 }
 
-void TableYields(TString cutname, bool ttbb = false, TString outfiledir= "Lumi2260-v3"){
+void TableYields(TString cutname, bool ttbb = false, TString outfiledir= "paJet25GeV-v0"){
 
   int cut;
   if      (cutname=="lepton")   cut = 0;
