@@ -1,6 +1,6 @@
 #include "Plots.h"
 
-void PlotsSyst(TString plots="2btag", bool LogScale=false){
+void PlotsSyst(TString plots="2btag", bool LogScale=false, TString nSyst = ""){
   
   /****************
         Style
@@ -46,26 +46,26 @@ void PlotsSyst(TString plots="2btag", bool LogScale=false){
   ****************/ 
   // ttbar categorization 
   std::vector<histos> ttbar_0;
-  ttbar_0 = loadhistograms(plots, files + "_ttbar_PowhegPythiatt");
+  ttbar_0 = loadhistograms(plots, files + "_ttbar_PowhegPythia" + nSyst + "tt");
   setuphistograms(ttbar_0, col_tt);
   std::vector<histos> ttbar_0_ttbb;
-  ttbar_0_ttbb = loadhistograms(plots, files + "_ttbar_PowhegPythiattbb");
+  ttbar_0_ttbb = loadhistograms(plots, files + "_ttbar_PowhegPythia" + nSyst + "ttbb");
   setuphistograms(ttbar_0_ttbb, col_ttbb);
   std::vector<histos> ttbar_0_ttb;
-  ttbar_0_ttb = loadhistograms(plots, files + "_ttbar_PowhegPythiattb");
+  ttbar_0_ttb = loadhistograms(plots, files + "_ttbar_PowhegPythia" + nSyst + "ttb");
   setuphistograms(ttbar_0_ttb, col_ttb);
   std::vector<histos> ttbar_0_ttcc;
-  ttbar_0_ttcc = loadhistograms(plots, files + "_ttbar_PowhegPythiattcc");
+  ttbar_0_ttcc = loadhistograms(plots, files + "_ttbar_PowhegPythia" + nSyst + "ttcc");
   setuphistograms(ttbar_0_ttcc, col_ttcc);
   std::vector<histos> ttbar_0_ttLF;
-  ttbar_0_ttLF = loadhistograms(plots, files + "_ttbar_PowhegPythiattLF");
+  ttbar_0_ttLF = loadhistograms(plots, files + "_ttbar_PowhegPythia" + nSyst + "ttLF");
   setuphistograms(ttbar_0_ttLF, col_ttLF);
 
   /****************
      ttbar Bkg
   ****************/ 
   std::vector<histos> ttbar_bkg;
-  ttbar_bkg = loadhistograms(plots, files + "_ttbar_PowhegPythiaBkg");
+  ttbar_bkg = loadhistograms(plots, files + "_ttbar_PowhegPythiaBkg" + nSyst);
   setuphistograms(ttbar_bkg, col_ttbarBkg);
   std::vector<histos> ttOther;
   ttOther = addhistograms(ttbar_bkg, ttbar_0);
@@ -81,6 +81,7 @@ void PlotsSyst(TString plots="2btag", bool LogScale=false){
     for(int ch=0; ch<3; ch++){
       
       histocanvas->cd();
+      if(LogScale) histocanvas->cd()->SetLogy();
 
       ttbar_0_ttbb[h].hist[ch]->GetXaxis()->SetRange(ttbar_0_ttbb[h].hist[ch]->GetXaxis()->GetFirst(), 
 						ttbar_0_ttbb[h].hist[ch]->GetXaxis()->GetLast());
@@ -98,7 +99,8 @@ void PlotsSyst(TString plots="2btag", bool LogScale=false){
 
       // Produce enough vertical space for the legend 
       float MaxHisto;
-      if(LogScale) MaxHisto = 100.0;
+
+      if(LogScale) MaxHisto = 8;
       else MaxHisto = 1.4;
       float maxh;
       maxh = ttOther[h].hist[ch]->GetMaximum();
@@ -108,7 +110,7 @@ void PlotsSyst(TString plots="2btag", bool LogScale=false){
       if (maxh < ttbar_0_ttLF[h].hist[ch]->GetMaximum()) maxh = ttbar_0_ttLF[h].hist[ch]->GetMaximum();
 
       ttbar_0_ttbb[h].hist[ch]->SetMaximum(MaxHisto*maxh);
-      if(LogScale) ttbar_0_ttbb[h].hist[ch]->SetMinimum(0.1);
+      //if(LogScale) ttbar_0_ttbb[h].hist[ch]->SetMinimum(0.1);
 
       ttbar_0_ttbb[h].hist[ch]->Draw("hist");
       ttbar_0_ttb[h].hist[ch]->Draw("histSAME");
@@ -191,7 +193,7 @@ void PlotsSyst(TString plots="2btag", bool LogScale=false){
       else dirfigname_log = "";
       TString dirfigname_pdf;
       TString dirfigname_png;
-      dirfigname_pdf = dirnameIn + "figuresSystComp_" + fl + "/ttbb/pdf" + dirfigname_log + "/";
+      dirfigname_pdf = dirnameIn + "figuresSystComp_" + fl + "/ttbb" + nSyst + "/pdf" + dirfigname_log + "/";
       //dirfigname_png = dirnameIn + "figuresSystComp_" + fl + "/ttbb/png" + dirfigname_log + "/";
       // make a dir if it does not exist!!
       gSystem->mkdir(dirfigname_pdf,       kTRUE);
