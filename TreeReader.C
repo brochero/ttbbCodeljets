@@ -657,12 +657,11 @@ int main(int argc, const char* argv[]){
       PUWeight = PUWeight*(*ScaleWeight)[scaleSysPar];
     
     
-    int NJets,NBtagJets, NBtagTJets;
+    int NJets,NBtagJets;
     
     TLorentzVector Lep;
     std::vector<int>  JetIndex;
-    std::vector<bool> bJet;
-    
+
     Lep.SetPxPyPzE(Lep_px,Lep_py,Lep_pz,Lep_E);
     if(Lep.Pt() < 30)  continue; // Lep pT >30GeV
     
@@ -742,8 +741,6 @@ int main(int argc, const char* argv[]){
 	// New Method (Event SF from tth group)
 	// https://twiki.cern.ch/twiki/bin/view/CMS/BTagShapeCalibration
 	btagDisc = (*Jet_CSV)[ijet] > CSV_WP;
-
-	bJet.push_back(btagDisc);
 	if(btagDisc) NBtagJets++; // Number of b-tagged jets
 		
       } // if(Jet_pT)
@@ -933,7 +930,6 @@ int main(int argc, const char* argv[]){
 	TLorentzVector jet;
 	jet.SetPxPyPzE((*Jet_px)[JetIndex[ijet]],(*Jet_py)[JetIndex[ijet]],(*Jet_pz)[JetIndex[ijet]],(*Jet_E)[JetIndex[ijet]]);
 	int JetFlav = (*Jet_partonFlavour)[JetIndex[ijet]];
-	bool IsbJet = bJet[ijet];
 
 	if (ijet < 4){
 	  hCSV  [ijet][icut][Channel]->Fill((*Jet_CSV)[JetIndex[ijet]], PUWeight);
@@ -957,7 +953,6 @@ int main(int argc, const char* argv[]){
     }//for(icuts)     
     
     JetIndex.clear();
-    bJet.clear();
     
   }//for(events)
   
