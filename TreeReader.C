@@ -41,6 +41,18 @@
 
 #ifndef __CINT__
 
+// Jet Class
+class ComJet: public TLorentzVector{
+public:
+  float CSV;
+  int Flavour, pTIndex;
+};
+
+void print_progress(int TreeEntries, Long64_t ievt);
+const TString currentDateTime();
+float DiJetMassCorrection(std::vector<ComJet> &Jets, bool ReArrange);
+
+
 void display_usage()
 {
   std::cout << "\033[1;37musage:\033[1;m skimfile cutindex [options]" << std::endl;
@@ -57,43 +69,7 @@ void display_usage()
   std::cout << "" << std::endl;
 }
 
-
-// Get current date/time, format is YYYY-MM-DD.HH:mm:ss
-const TString currentDateTime() {
-  time_t     now = time(0);
-  struct tm  tstruct;
-  char       buf[80];
-  tstruct = *localtime(&now);
-  // Visit http://en.cppreference.com/w/cpp/chrono/c/strftime
-  // for more information about date/time format
-  strftime(buf, sizeof(buf), "%Y-%m-%d at %X", &tstruct);
-
-  return buf;
-}
-
-void print_progress(int TreeEntries, Long64_t ievt)
-{
-  int step = TreeEntries/50;
-  if (ievt%(step) == 0){ 
-    float progress=(ievt)/(TreeEntries*1.0);
-    int barWidth = 50;
-    
-    std::cout << "[";
-    int pos = barWidth * progress;
-    
-    for (int i = 0; i < barWidth; ++i) {
-      if (i < pos) std::cout << "=";
-      else if (i == pos) std::cout << ">";
-      else std::cout << " ";
-    }
-    
-    std::cout << "] " << int(progress * 100.0) << " %\r";
-    std::cout.flush();
-  }  
-}
-
-
-//enum class btagUnc:unsigned int{CENTRAL,
+// b-tagging SF
 struct btagUnc{
   enum:unsigned int{CENTRAL,
       JES_UP,     JES_DN,
@@ -111,10 +87,10 @@ struct btagUnc{
 int main(int argc, const char* argv[]){
 
   gErrorIgnoreLevel = kError;
-
+  
   gSystem->Load("libTree");
   gROOT->ProcessLine("#include <vector>");
-
+  
   bool   _ttbar_cat = false;
   bool   _syst      = false;
   bool	 _tr_unc    = false;
@@ -122,12 +98,12 @@ int main(int argc, const char* argv[]){
   const char * _output   = 0;
   const char * _input    = 0;
   // TopTrees directory
-  const char * _dir      = "../Files_v7-6-2/";
+  const char * _dir      = "../Files_v7-6-3/";
   const char * _syst_var = 0;
   const char * _tr       = 0;
   const char * _idiso    = 0;
   const char * _ttbar_id = 0;
-
+  
   // Arguments used
   //std::set<int> usedargs;
   //Parsing input options
@@ -135,47 +111,47 @@ int main(int argc, const char* argv[]){
     display_usage();
     return -1;
   }
-
+  
   else{
-      //Argumet 1 must be a valid input fileName
-      for (int i = 1; i < argc; i++){
-	if( strcmp(argv[i],"-i") == 0 ){
-	  _input = argv[i+1];
-	  i++;
-	}
-	if( strcmp(argv[i],"-d") == 0 ){
-	  _dir = argv[i+1];
-	  i++;
-	}
-	if( strcmp(argv[i],"-o") == 0 ){
-	  _output= argv[i+1];
-	  i++;
-	}
-	if( strcmp(argv[i],"-s") == 0 ){
-	  _syst= true;
-	  _syst_var = argv[i+1];
-	}
-	if( strcmp(argv[i],"-tr") == 0 ){
-	  _tr_unc= true;
-	  _tr= argv[i+1];
-	  i++;
-	}
-	if( strcmp(argv[i],"-idiso") == 0 ){
-	  _idiso_unc= true;
-	  _idiso= argv[i+1];
-	  i++;
-	}
-	if( strcmp(argv[i],"-cat") == 0 ){
-	  _ttbar_cat = true;
-	  _ttbar_id  = argv[i+1];
-	  i++;
-	}
-	if( strcmp(argv[i],"-h") == 0 ||
-	    strcmp(argv[i],"--help") == 0 ){
-	  display_usage();
-	  return 0;
-	}
+    //Argumet 1 must be a valid input fileName
+    for (int i = 1; i < argc; i++){
+      if( strcmp(argv[i],"-i") == 0 ){
+	_input = argv[i+1];
+	i++;
       }
+      if( strcmp(argv[i],"-d") == 0 ){
+	_dir = argv[i+1];
+	i++;
+      }
+      if( strcmp(argv[i],"-o") == 0 ){
+	_output= argv[i+1];
+	i++;
+      }
+      if( strcmp(argv[i],"-s") == 0 ){
+	_syst= true;
+	_syst_var = argv[i+1];
+      }
+      if( strcmp(argv[i],"-tr") == 0 ){
+	_tr_unc= true;
+	_tr= argv[i+1];
+	i++;
+      }
+      if( strcmp(argv[i],"-idiso") == 0 ){
+	_idiso_unc= true;
+	_idiso= argv[i+1];
+	i++;
+      }
+      if( strcmp(argv[i],"-cat") == 0 ){
+	_ttbar_cat = true;
+	_ttbar_id  = argv[i+1];
+	i++;
+      }
+      if( strcmp(argv[i],"-h") == 0 ||
+	  strcmp(argv[i],"--help") == 0 ){
+	display_usage();
+	return 0;
+      }
+    }
   }//else
   if( _input ==0 ){
     std::cerr << "\033[1;31mskimfile ERROR:\033[1;m The '-i' option is mandatory!"
@@ -216,6 +192,7 @@ int main(int argc, const char* argv[]){
 
   float Lep_px, Lep_py, Lep_pz, Lep_E;
   std::vector<float> *Lep_SF=0;
+  float Lep_LES=0;
 
   std::vector<float> *Jet_px=0, *Jet_py=0, *Jet_pz=0, *Jet_E=0;
   std::vector<int>   *Jet_partonFlavour=0;
@@ -253,6 +230,7 @@ int main(int argc, const char* argv[]){
   theTree.SetBranchAddress( "lepton_E",  &Lep_E );
 
   theTree.SetBranchAddress( "lepton_SF",  &Lep_SF );
+  theTree.SetBranchAddress( "lepton_LES",  &Lep_LES );
 
   theTree.SetBranchAddress( "jet_px", &Jet_px );
   theTree.SetBranchAddress( "jet_py", &Jet_py );
@@ -321,8 +299,12 @@ int main(int argc, const char* argv[]){
   TH1F *hmT[4][2];
 
   TH1F *hNJets[4][2], *hHT[4][2], *hNBtagJets[4][2];
-  TH1F *hCSV[4][4][2], *hJetPt[4][4][2], *hJetpTUncVar[4][4][2];
-  TH2F *h2DCSV_23Jet[4][2];
+  TH1F *hCSV[6][4][2], *hJetPt[6][4][2], *hJetpTUncVar[6][4][2];
+  TH2F *h2DCSV_23Jet[4][2], *h2DCSV_45Jet[4][2]; 
+  TH2F *h2DCSV_24Jet[4][2], *h2DCSV_25Jet[4][2];
+  TH2F *h2DCSV_34Jet[4][2], *h2DCSV_35Jet[4][2];
+  TH1F *hMassJet[5][6][4][2];
+  TH1F *hInvMassjj[4][2];
 
   TH1F *hSFpT[4][2], *hSFpTError[4][2];
   TH1F *hSFIDISO[4][2], *hSFIDISOError[4][2];
@@ -341,7 +323,7 @@ int main(int argc, const char* argv[]){
   namecut[0]="lepton";
   namecut[1]="6Jets";
   namecut[2]="2btag";
-  namecut[3]="4btag";
+  namecut[3]="3btag";
   
   TString titlenamech[2];
   titlenamech[0]="#mu+Jets";
@@ -390,7 +372,12 @@ int main(int argc, const char* argv[]){
       if(j == 2) hNBtagJets[j][i]->GetXaxis()->SetRange(3,6);
       if(j == 3) hNBtagJets[j][i]->GetXaxis()->SetRange(5,6);
       
-      h2DCSV_23Jet[j][i] = new TH2F("h2DCSV_23Jet_" + namech[i] + "_" + namecut[j], "CSVv2 Discriminant for 3rd and 4th Jets " + titlenamech[i], 10,0,1,10,0,1);
+      h2DCSV_23Jet[j][i] = new TH2F("h2DCSV_23Jet_" + namech[i] + "_" + namecut[j], "CSVv2 Discriminant for 3rd and 4th Jets " + titlenamech[i], 20,0,1,20,0,1);
+      h2DCSV_45Jet[j][i] = new TH2F("h2DCSV_45Jet_" + namech[i] + "_" + namecut[j], "CSVv2 Discriminant for 5th and 6th Jets " + titlenamech[i], 20,0,1,20,0,1);
+      h2DCSV_24Jet[j][i] = new TH2F("h2DCSV_24Jet_" + namech[i] + "_" + namecut[j], "CSVv2 Discriminant for 3rd and 5th Jets " + titlenamech[i], 20,0,1,20,0,1);
+      h2DCSV_25Jet[j][i] = new TH2F("h2DCSV_25Jet_" + namech[i] + "_" + namecut[j], "CSVv2 Discriminant for 3rd and 6th Jets " + titlenamech[i], 20,0,1,20,0,1);
+      h2DCSV_34Jet[j][i] = new TH2F("h2DCSV_34Jet_" + namech[i] + "_" + namecut[j], "CSVv2 Discriminant for 4th and 5th Jets " + titlenamech[i], 20,0,1,20,0,1);
+      h2DCSV_35Jet[j][i] = new TH2F("h2DCSV_35Jet_" + namech[i] + "_" + namecut[j], "CSVv2 Discriminant for 4th and 6th Jets " + titlenamech[i], 20,0,1,20,0,1);
 
       hHT[j][i]         = new TH1F("hHT_"+namech[i]+"_"+namecut[j],"H_{T} " + titlenamech[i],100,0,600);
       hHT[j][i]->GetXaxis()->SetTitle("HT[GeV]");      
@@ -439,13 +426,15 @@ int main(int argc, const char* argv[]){
       hSFpTError[j][i]      = new TH1F("hSFpTError_"+namech[i]+"_"+namecut[j],"#Delta SF_{pT} " + titlenamech[i],400,0,0.05); 
       
       
-      TString jetn[4];
+      TString jetn[6];
       jetn[0]= "Jet-0"; 
       jetn[1]= "Jet-1"; 
       jetn[2]= "Jet-2"; 
       jetn[3]= "Jet-3"; 
+      jetn[4]= "Jet-4"; 
+      jetn[5]= "Jet-5"; 
       
-      for(int ij=0; ij<4; ij++){
+      for(int ij=0; ij<6; ij++){
 	hCSV[ij][j][i] = new TH1F("hCSV_" + jetn[ij] + "_" + namech[i] + "_" + namecut[j],"CSV " + jetn[ij] + " " + titlenamech[i],10,0,1);
 	hCSV[ij][j][i]->GetXaxis()->SetTitle("CSVv2");      
 	hJetPt[ij][j][i] = new TH1F("hJetPt_" + jetn[ij] + "_" + namech[i] + "_" + namecut[j],"p_{T}^{Jet} " + jetn[ij] + " " + titlenamech[i],10,0,200);
@@ -454,6 +443,31 @@ int main(int argc, const char* argv[]){
 	hJetpTUncVar[ij][j][i] = new TH1F("hJetpTUncVar_" + jetn[ij] + "_" + namech[i] + "_" + namecut[j], "#Delta pT^{Jet} " + jetn[ij] + " " + titlenamech[i], 20.0, 0.0, 2.0);
       }
 
+
+      TString jetMassn[6][6];
+      jetMassn[0][1] = "Jet01";
+      jetMassn[0][2] = "Jet02";
+      jetMassn[0][3] = "Jet03";
+      jetMassn[0][4] = "Jet04";
+      jetMassn[0][5] = "Jet05";
+      jetMassn[1][2] = "Jet12";
+      jetMassn[1][3] = "Jet13";
+      jetMassn[1][4] = "Jet14";
+      jetMassn[1][5] = "Jet15";
+      jetMassn[2][3] = "Jet23";
+      jetMassn[2][4] = "Jet24";
+      jetMassn[2][5] = "Jet25";
+      jetMassn[3][4] = "Jet34";
+      jetMassn[3][5] = "Jet35";
+      jetMassn[4][5] = "Jet45";
+
+      for(int ja=0; ja<5; ja++){
+	for(int jb=ja+1; jb<6; jb++){
+	  hMassJet[ja][jb][j][i]    = new TH1F("hMassJet_" + jetMassn[ja][jb] + "_" + namech[i]+"_"+namecut[j],"transverse Mass of Dijets "+ jetMassn[ja][jb] + " " + titlenamech[i],80,0,400);
+	}
+      }
+      hInvMassjj[j][i]  = new TH1F("hInvMassjj_" + namech[i]+"_"+namecut[j],"Compatible Inv. Mass " + titlenamech[i],80,0,400);
+      
       hEvtCatego[j][i]  = new TH1F("hEvtCatego_"+namech[i]+"_"+namecut[j],"ttbar Event Categorization " + titlenamech[i],4,-0.5,3.5);
       hEvtCatego[j][i]->GetXaxis()->SetTitle("ttbar");      
 
@@ -571,6 +585,7 @@ int main(int argc, const char* argv[]){
 
   // New WP for 76X: https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation76X
   float CSV_WP = 0.800; // Medium
+  //float CSV_WP = 0.935; // Tight
   int btagSysPar = 0;
   // BTagSFUtil *fBTagSF;   //The BTag SF utility
   // BTagSFUtil *fBTagSFT;   //The BTag SF utility
@@ -624,7 +639,7 @@ int main(int argc, const char* argv[]){
   *************************/  
   float NormWeight = 0.0;
   // NormWeight = Lumi*(1.0/N_Gen_events)*(Xsec)
-  NormWeight = SFLumi(fname, 2260, nNorm_Event);  
+  NormWeight = SFLumi(fname, 2170, nNorm_Event);  
 
   std::cout << "-----------------------                                 -------------------------" << std::endl;
   std::cout << "Number of Events     = " << nNorm_Event << std::endl;
@@ -638,6 +653,7 @@ int main(int argc, const char* argv[]){
   std::cout << "--- Processing: " << theTree.GetEntries() << " events" << std::endl;
   
   for (Long64_t ievt=0; ievt<theTree.GetEntries();ievt++) {
+    //for (Long64_t ievt=0; ievt<10000;ievt++) {
     
     theTree.GetEntry(ievt);  
     print_progress(theTree.GetEntries(), ievt);
@@ -653,16 +669,24 @@ int main(int argc, const char* argv[]){
     PUWeight = PUWeight * NormWeight;
     
     // Scale reweight: Syst. Unc.
-    if (_syst && syst_varname.Contains("ScaleRF"))
+    if (_syst && syst_varname.Contains("ScaleR"))
       PUWeight = PUWeight*(*ScaleWeight)[scaleSysPar];
-    
     
     int NJets,NBtagJets;
     
     TLorentzVector Lep;
-    std::vector<int>  JetIndex;
-
+    
     Lep.SetPxPyPzE(Lep_px,Lep_py,Lep_pz,Lep_E);
+    if (_syst && syst_varname.Contains("LES")){
+      if (syst_varname.Contains("Up"))     Lep.SetPxPyPzE(Lep_px+(Lep_px*Lep_LES),
+							  Lep_py+(Lep_py*Lep_LES),
+							  Lep_pz+(Lep_pz*Lep_LES),
+							  Lep_E);
+      if (syst_varname.Contains("Down"))   Lep.SetPxPyPzE(Lep_px-(Lep_px*Lep_LES),
+							  Lep_py-(Lep_py*Lep_LES),
+							  Lep_pz-(Lep_pz*Lep_LES),
+							  Lep_E);
+    }
     if(Lep.Pt() < 30)  continue; // Lep pT >30GeV
     
     // Transverse W Mass
@@ -671,14 +695,14 @@ int main(int argc, const char* argv[]){
     
     float mT = sqrt(2*MET*Lep.Pt()*(1.0-cos( Lep.DeltaPhi(METv) )));
     
-    // Jets 
+    // Jets     
     NJets      = 0;
     NBtagJets  = 0;
     
     // Global SF_b-tag
-    float btagUnc_val = 0.0;
     // From: https://twiki.cern.ch/twiki/bin/view/CMS/BTagShapeCalibration
-    //btagUnc btagvar;
+    float btagUnc_val = 0.0;
+
     if (!fname.Contains("Data")){
       if(_syst && syst_varname.Contains("btag")){
 	if(syst_varname.Contains("Up"))
@@ -695,12 +719,9 @@ int main(int argc, const char* argv[]){
       }
     }// if(!data)
     
+    std::vector<ComJet> Jets;
+    
     for(int ijet=0; ijet < Jet_px->size(); ijet++){
-      
-      TLorentzVector jet;
-      jet.SetPxPyPzE((*Jet_px)[ijet],(*Jet_py)[ijet],(*Jet_pz)[ijet],(*Jet_E)[ijet]);
-      float jet_pT = jet.Pt(); 
-      int JetFlav  = (*Jet_partonFlavour)[ijet];      
       
       float JetSystVar = 1.0;
       if(_syst){
@@ -720,19 +741,23 @@ int main(int argc, const char* argv[]){
 	  JetSystVar = (*Jet_JER_Down)[ijet];
 	}
       }
-      jet_pT = jet_pT*JetSystVar;
+      
+      ComJet jet;
+      jet.SetPxPyPzE(JetSystVar * (*Jet_px)[ijet],
+		     JetSystVar * (*Jet_py)[ijet],
+		     (*Jet_pz)[ijet],
+		     (*Jet_E)[ijet]);
+      jet.Flavour = (*Jet_partonFlavour)[ijet];
+      jet.CSV = (*Jet_CSV)[ijet];
 
-      if(jet_pT>25){ // Jet pT > 30GeV
-	
-	JetIndex.push_back(ijet);
-	NJets++; // Number of jets
+      if(jet.Pt() > 25){ // Jet pT Cut
+		
+	Jets.push_back(jet);
 
 	/*******************************************
                        b-tagging
 	*******************************************/    
-	bool btagDisc = false;
-		
-	// OLD Method: 
+	// OLD b-tagging Method: 
 	// b-tagging WP from https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideBTagging
 	// Not recommended for analysis with observables that depends ontagging.
 	// if (fname.Contains("Data")) btagDisc = fBTagSF->IsTagged((*Jet_CSV)[ijet], -999999, jet.Pt(), jet.Eta());
@@ -740,12 +765,21 @@ int main(int argc, const char* argv[]){
 	
 	// New Method (Event SF from tth group)
 	// https://twiki.cern.ch/twiki/bin/view/CMS/BTagShapeCalibration
-	btagDisc = (*Jet_CSV)[ijet] > CSV_WP;
-	if(btagDisc) NBtagJets++; // Number of b-tagged jets
+	if(jet.CSV > CSV_WP) NBtagJets++; // Number of b-tagged jets
 		
       } // if(Jet_pT)
     }// for(jets)
+    
+    NJets = Jets.size();
 
+    /*******************************************
+              Dijet Invariant Mass 
+    *******************************************/
+    float Mjj = 0.0;    
+    if(NJets > 5 && NBtagJets > 1){ // Only Final Cut Level
+      Mjj = DiJetMassCorrection(Jets, true);
+    } //if (6jets)    
+    
     // Number of GENJets
     int NGenJets = 0;
     if (_ttbar_cat){
@@ -769,29 +803,36 @@ int main(int argc, const char* argv[]){
     
     else {
       // Second Method: Taking SF from root file
-      SFIDISOTrigger(SF_ID_ISO_Tr,
-      		     Lep, Channel,
-      		     hmuIDISOSF, hmuTriggerSF,
-      		     heIDISOSF,  heTriggerSF);
+      // SFIDISOTrigger(SF_ID_ISO_Tr,
+      // 		     Lep, Channel,
+      // 		     hmuIDISOSF, hmuTriggerSF,
+      // 		     heIDISOSF,  heTriggerSF);
       
       // Easiest adaptation: Create Lep_SF in the same way the Lep_SF vector
-      // SF_ID_ISO_Tr = Lep_SF;
+      SF_ID_ISO_Tr = (*Lep_SF);
 
-      if(_idiso_unc){
-	if     (IDISOUnc == "Up")   PUWeight = PUWeight * (SF_ID_ISO_Tr[1] + SF_ID_ISO_Tr[2]);
-	else if(IDISOUnc == "Down") PUWeight = PUWeight * (SF_ID_ISO_Tr[1] - SF_ID_ISO_Tr[2]);
-	else if(IDISOUnc == "Nom")  PUWeight = PUWeight * (SF_ID_ISO_Tr[1]);
-      } // if(_idiso_unc)
+      if(_syst && syst_varname.Contains("LepSF")){
+	float SFSystUnc = SF_ID_ISO_Tr[0]*0.015;
+	if(syst_varname.Contains("Up"))   PUWeight = PUWeight * (SF_ID_ISO_Tr[1] + SFSystUnc) ;
+	if(syst_varname.Contains("Down")) PUWeight = PUWeight * (SF_ID_ISO_Tr[2] - SFSystUnc);
+      }
+      else PUWeight = PUWeight * SF_ID_ISO_Tr[0]; // Central
+
+      // if(_idiso_unc){
+      // 	if     (IDISOUnc == "Up")   PUWeight = PUWeight * (SF_ID_ISO_Tr[1] + SF_ID_ISO_Tr[2]);
+      // 	else if(IDISOUnc == "Down") PUWeight = PUWeight * (SF_ID_ISO_Tr[1] - SF_ID_ISO_Tr[2]);
+      // 	else if(IDISOUnc == "Nom")  PUWeight = PUWeight * (SF_ID_ISO_Tr[1]);
+      // } // if(_idiso_unc)
       
-      else if(_tr_unc){
-	if     (TrUnc=="Up")   PUWeight=PUWeight*(SF_ID_ISO_Tr[3] + SF_ID_ISO_Tr[4]);
-	else if(TrUnc=="Down") PUWeight=PUWeight*(SF_ID_ISO_Tr[3] - SF_ID_ISO_Tr[4]);
-	else if(TrUnc=="Nom")  PUWeight=PUWeight*(SF_ID_ISO_Tr[3]);	
-      }// if(_tr_unc) 
+      // else if(_tr_unc){
+      // 	if     (TrUnc=="Up")   PUWeight=PUWeight*(SF_ID_ISO_Tr[3] + SF_ID_ISO_Tr[4]);
+      // 	else if(TrUnc=="Down") PUWeight=PUWeight*(SF_ID_ISO_Tr[3] - SF_ID_ISO_Tr[4]);
+      // 	else if(TrUnc=="Nom")  PUWeight=PUWeight*(SF_ID_ISO_Tr[3]);	
+      // }// if(_tr_unc) 
       
-      // Check the SF_e implementation
-      // If the electron is in the transition region, SF = 1
-      else  if(SF_ID_ISO_Tr[0] != 0.0)  PUWeight=PUWeight*(SF_ID_ISO_Tr[0]); 
+      // // Check the SF_e implementation
+      // // If the electron is in the transition region, SF = 1
+      // else  if(SF_ID_ISO_Tr[0] != 0.0)  PUWeight=PUWeight*(SF_ID_ISO_Tr[0]); 
       
     }// else(Contain("Data"))
     
@@ -803,7 +844,7 @@ int main(int argc, const char* argv[]){
     int                            cut = 0; // Single Lepton (from Tree)
     if(NJets > 5)                  cut = 1; // + 6 Jets 
     if(NJets > 5 && NBtagJets > 1) cut = 2; // + 2 b-tag
-    if(NJets > 5 && NBtagJets > 3) cut = 3; // + 4 b-tag
+    if(NJets > 5 && NBtagJets > 2) cut = 3; // + 3 b-tag
 
     /***************************
         ttbar Categorization
@@ -820,6 +861,7 @@ int main(int argc, const char* argv[]){
       // Full Phase Space:
       int cone_NaddJets  = (*GenConeCat)[5];
       int cone_NaddbJets = (*GenConeCat)[6];
+      int cone_NaddcJets = (*GenConeCat)[7];
       
       bool Isttjj = false;
       bool Isttbb = false;
@@ -830,12 +872,23 @@ int main(int argc, const char* argv[]){
       
       if(cone_NbJets > 1 && cone_NJets > 5) Isttjj = true;
       
+      // Categorization based in the Visible Ph-Sp
       if      (cone_NbJets > 3  && cone_NJets > 5) Isttbb = true;
       else if (cone_NbJets > 2  && cone_NJets > 5) Isttb  = true;
       else if (cone_NbJets > 1  && cone_NJets > 5 && cone_NcJets > 1) Isttcc = true;
       else if (cone_NbJets > 1  && cone_NJets > 5) IsttLF = true;
       else Istt = true;
-      
+
+      // Categorization based in the Full Ph-Sp
+      // if      (cone_NaddJets > 1) Isttjj = true;
+
+      // if      (cone_NaddbJets > 1) Isttbb = true;
+      // else if (cone_NaddbJets > 0) Isttb  = true;
+      // else if (cone_NaddcJets > 1) Isttcc = true;
+      // else if (cone_NaddJets  > 0) IsttLF = true;
+      // else Istt = true;
+
+
       if(ttbar_id == "ttjj" && !Isttjj) cut = -1;
       if(ttbar_id == "ttbb" && !Isttbb) cut = -1;
       if(ttbar_id == "ttb"  && !Isttb ) cut = -1;
@@ -885,10 +938,10 @@ int main(int argc, const char* argv[]){
       /*******************
         Fill Histograms
       *******************/
-      hSFIDISO[icut][Channel]->Fill(SF_ID_ISO_Tr[1],PUWeight);
-      hSFIDISOError[icut][Channel]->Fill(SF_ID_ISO_Tr[2],PUWeight);
-      hSFTrigger[icut][Channel]->Fill(SF_ID_ISO_Tr[3],PUWeight);
-      hSFTriggerError[icut][Channel]->Fill(SF_ID_ISO_Tr[4],PUWeight);
+      //hSFIDISO[icut][Channel]->Fill(SF_ID_ISO_Tr[1],PUWeight);
+      //hSFIDISOError[icut][Channel]->Fill(SF_ID_ISO_Tr[2],PUWeight);
+      //hSFTrigger[icut][Channel]->Fill(SF_ID_ISO_Tr[3],PUWeight);
+      //hSFTriggerError[icut][Channel]->Fill(SF_ID_ISO_Tr[4],PUWeight);
     
       /******************
           Acceptace
@@ -916,44 +969,56 @@ int main(int argc, const char* argv[]){
       ******************/
       hNJets[icut][Channel]->Fill(NJets,PUWeight); 
       hNBtagJets[icut][Channel]->Fill(NBtagJets,PUWeight);
-
+      // Dijet InvMass
+      hInvMassjj[icut][Channel]->Fill(Mjj, PUWeight);
       // Global btag SF
       h2DSFbtag_Global[icut][Channel]->Fill((*Jet_SF_CSV)[btagUnc::CENTRAL], btagUnc_val, PUWeight);
       hSFbtag_Global[icut][Channel]->Fill((*Jet_SF_CSV)[btagUnc::CENTRAL], PUWeight);
       hSFbtag_Global_var[icut][Channel]->Fill(btagUnc_val, PUWeight);
       
-      // CSV discriminant for 3rd and 4th Jet
-      if(JetIndex.size() > 3)  h2DCSV_23Jet[icut][Channel]->Fill((*Jet_CSV)[JetIndex[2]], (*Jet_CSV)[JetIndex[3]], PUWeight);
+      // 2D CSV discriminant plot for all Jets
+      if(Jets.size() > 3)  h2DCSV_23Jet[icut][Channel]->Fill(Jets[2].CSV, Jets[3].CSV, PUWeight);
+      if(Jets.size() > 4)  h2DCSV_24Jet[icut][Channel]->Fill(Jets[2].CSV, Jets[4].CSV, PUWeight);
+      if(Jets.size() > 4)  h2DCSV_34Jet[icut][Channel]->Fill(Jets[3].CSV, Jets[4].CSV, PUWeight);
+      if(Jets.size() > 5)  h2DCSV_25Jet[icut][Channel]->Fill(Jets[2].CSV, Jets[5].CSV, PUWeight);
+      if(Jets.size() > 5)  h2DCSV_35Jet[icut][Channel]->Fill(Jets[3].CSV, Jets[5].CSV, PUWeight);
 
+      int jbmax = std::min(6,NJets);
+      for(int ijet=0; ijet < Jets.size(); ijet++){
 
-      for(int ijet=0; ijet < JetIndex.size(); ijet++){
-	TLorentzVector jet;
-	jet.SetPxPyPzE((*Jet_px)[JetIndex[ijet]],(*Jet_py)[JetIndex[ijet]],(*Jet_pz)[JetIndex[ijet]],(*Jet_E)[JetIndex[ijet]]);
-	int JetFlav = (*Jet_partonFlavour)[JetIndex[ijet]];
-
-	if (ijet < 4){
-	  hCSV  [ijet][icut][Channel]->Fill((*Jet_CSV)[JetIndex[ijet]], PUWeight);
+	ComJet jet = Jets[ijet];
+	
+	if (ijet < 6){	  
+	  hCSV  [ijet][icut][Channel]->Fill(jet.CSV,  PUWeight);
 	  hJetPt[ijet][icut][Channel]->Fill(jet.Pt(), PUWeight);
 	}
 
-	if(JetFlav == 5){
+	if(jet.Flavour == 5){
 	  h2DSFbtag_b[icut][Channel]->Fill(jet.Pt(), fabs(jet.Eta()), PUWeight); // b-Flavour
-	  if((*Jet_CSV)[JetIndex[ijet]] > CSV_WP) h2DSFbtag_btag_b[icut][Channel]->Fill(jet.Pt(), fabs(jet.Eta()), PUWeight);  
+	  if(jet.CSV > CSV_WP) h2DSFbtag_btag_b[icut][Channel]->Fill(jet.Pt(), fabs(jet.Eta()), PUWeight);  
 	}	
-	else if(JetFlav == 4){
+	else if(jet.Flavour == 4){
 	  h2DSFbtag_c[icut][Channel]->Fill(jet.Pt(), fabs(jet.Eta()), PUWeight); // c-Flavour
-	  if((*Jet_CSV)[JetIndex[ijet]] > CSV_WP) h2DSFbtag_btag_c[icut][Channel]->Fill(jet.Pt(), fabs(jet.Eta()), PUWeight);  
+	  if(jet.CSV > CSV_WP) h2DSFbtag_btag_c[icut][Channel]->Fill(jet.Pt(), fabs(jet.Eta()), PUWeight);  
 	}
-	else if(JetFlav == 1 || JetFlav == 2 || JetFlav == 3){
+	else if(jet.Flavour == 1 || jet.Flavour == 2 || jet.Flavour == 3){
 	  h2DSFbtag_l[icut][Channel]->Fill(jet.Pt(), fabs(jet.Eta()), PUWeight); // l-Flavour
-	  if((*Jet_CSV)[JetIndex[ijet]] > CSV_WP) h2DSFbtag_btag_l[icut][Channel]->Fill(jet.Pt(), fabs(jet.Eta()), PUWeight);  
+	  if(jet.CSV > CSV_WP) h2DSFbtag_btag_l[icut][Channel]->Fill(jet.Pt(), fabs(jet.Eta()), PUWeight);  
 	}
+	
+	//Dijet Invariant Mass 
+	for(int jjet=ijet+1; jjet < jbmax; jjet++){
+	  ComJet jet_ = Jets[jjet];
+	  float DijetInvMass = (jet+jet_).M(); 
+	  hMassJet[ijet][jjet][icut][Channel]->Fill(DijetInvMass, PUWeight);
+	}// for(jjet)
+	
       }//for(ijet)     
 
     }//for(icuts)     
     
-    JetIndex.clear();
-    
+    Jets.clear();
+
   }//for(events)
   
 
@@ -980,34 +1045,19 @@ int main(int argc, const char* argv[]){
   
 
   //Acceptance-Efficiency
-  std::cout << "--------  Acceptace  --------" << std::endl;
-  std::cout << "Number of RAW-mu+Jets events:" << std::endl;
-  std::cout << namecut[0] << ": " << AccEvent[0][0] << std::endl;
-  std::cout << namecut[1] << ": " << AccEvent[1][0] << std::endl;
-  std::cout << namecut[2] << ": " << AccEvent[2][0] << std::endl;
-  std::cout << namecut[3] << ": " << AccEvent[3][0] << std::endl;
-
-  std::cout << "--------  Efficiency  --------" << std::endl;
-  std::cout << "Number of Weigthed-mu+Jets events:" << std::endl;
-  std::cout << namecut[0] << ": " << EffEvent[0][0] << " +/- " << sqrt(AccEvent[0][0])*EffEvent[0][0]/AccEvent[0][0] << std::endl;
-  std::cout << namecut[1] << ": " << EffEvent[1][0] << " +/- " << sqrt(AccEvent[1][0])*EffEvent[1][0]/AccEvent[1][0] << std::endl;
-  std::cout << namecut[2] << ": " << EffEvent[2][0] << " +/- " << sqrt(AccEvent[2][0])*EffEvent[2][0]/AccEvent[2][0] << std::endl;
-  std::cout << namecut[3] << ": " << EffEvent[3][0] << " +/- " << sqrt(AccEvent[3][0])*EffEvent[3][0]/AccEvent[3][0] << std::endl;
-  
-  std::cout << "--------  Acceptace  --------" << std::endl;
-  std::cout << "Number of RAW-e+Jets events:" << std::endl;
-  std::cout << namecut[0] << ": " << AccEvent[0][1] << std::endl;
-  std::cout << namecut[1] << ": " << AccEvent[1][1] << std::endl;
-  std::cout << namecut[2] << ": " << AccEvent[2][1] << std::endl;
-  std::cout << namecut[3] << ": " << AccEvent[3][1] << std::endl;
-
-  std::cout << "--------  Efficiency  --------" << std::endl;
-  std::cout << "Number of Weigthed-e+Jets events: " << std::endl;
-  std::cout << namecut[0] << ": " << EffEvent[0][1] << " +/- " << sqrt(AccEvent[0][1])*EffEvent[0][1]/AccEvent[0][1] << std::endl;
-  std::cout << namecut[1] << ": " << EffEvent[1][1] << " +/- " << sqrt(AccEvent[1][1])*EffEvent[1][1]/AccEvent[1][1] << std::endl;
-  std::cout << namecut[2] << ": "  << EffEvent[2][1] << " +/- " << sqrt(AccEvent[2][1])*EffEvent[2][1]/AccEvent[2][1] << std::endl;
-  std::cout << namecut[3] << ": " << EffEvent[3][1] << " +/- " << sqrt(AccEvent[3][1])*EffEvent[3][1]/AccEvent[3][1] << std::endl;
-
+for(int nc = 0; nc < 4; nc++){
+  std::cout << "-----------------------------" << std::endl;
+  std::cout << "-- Acceptace: Number of RAW-mu+Jets events:" << std::endl;
+  std::cout << namecut[nc] << ": " << AccEvent[nc][0] << std::endl;
+  std::cout << "-- Efficiency: Number of Weigthed-mu+Jets events:" << std::endl;
+  std::cout << namecut[nc] << ": " << EffEvent[nc][0] << " +/- " << sqrt(AccEvent[nc][0])*EffEvent[nc][0]/AccEvent[nc][0] << std::endl;
+  std::cout << std::endl;
+  std::cout << "-- Acceptace: Number of RAW-e+Jets events:" << std::endl;
+  std::cout << namecut[nc] << ": " << AccEvent[nc][1] << std::endl;
+  std::cout << "-- Efficiency: Number of Weigthed-e+Jets events: " << std::endl;
+  std::cout << namecut[nc] << ": " << EffEvent[nc][1] << " +/- " << sqrt(AccEvent[nc][1])*EffEvent[nc][1]/AccEvent[nc][1] << std::endl;
+  std::cout << "-----------------------------" << std::endl;
+ }
 
   //Output Dir
   TString dirname="TopResults";   
@@ -1180,17 +1230,30 @@ int main(int argc, const char* argv[]){
       
       hNJets[j][i]->Write();
       hNBtagJets[j][i]->Write();            
+
       h2DCSV_23Jet[j][i]->Write();
+      h2DCSV_45Jet[j][i]->Write();
+      h2DCSV_24Jet[j][i]->Write();
+      h2DCSV_25Jet[j][i]->Write();
+      h2DCSV_34Jet[j][i]->Write();
+      h2DCSV_35Jet[j][i]->Write();
       
       h2DSFbtag_Global[j][i]->Write();
       hSFbtag_Global[j][i]->Write();
       hSFbtag_Global_var[j][i]->Write();
 
-      for(int ij=0; ij<4; ij++){
+      for(int ij=0; ij<6; ij++){
 	hCSV[ij][j][i]->Write();
 	hJetPt[ij][j][i]->Write();
       }
-      
+
+      for(int ja=0; ja<5; ja++){
+	for(int jb=ja+1; jb<6; jb++){
+	  hMassJet[ja][jb][j][i]->Write();
+	}
+      }      
+      hInvMassjj[j][i]->Write();
+
       hSFpT[j][i]->Write();
       hSFpTError[j][i]->Write();
       
@@ -1215,6 +1278,86 @@ int main(int argc, const char* argv[]){
 
 }
 
+// Get current date/time, format is YYYY-MM-DD.HH:mm:ss
+const TString currentDateTime() {
+  time_t     now = time(0);
+  struct tm  tstruct;
+  char       buf[80];
+  tstruct = *localtime(&now);
+  // Visit http://en.cppreference.com/w/cpp/chrono/c/strftime
+  // for more information about date/time format
+  strftime(buf, sizeof(buf), "%Y-%m-%d at %X", &tstruct);
 
+  return buf;
+}
+
+void print_progress(int TreeEntries, Long64_t ievt){
+  int step = TreeEntries/50;
+  if (ievt%(step) == 0){ 
+    float progress=(ievt)/(TreeEntries*1.0);
+    int barWidth = 50;
+    
+    std::cout << "[";
+    int pos = barWidth * progress;
+    
+    for (int i = 0; i < barWidth; ++i) {
+      if (i < pos) std::cout << "=";
+      else if (i == pos) std::cout << ">";
+      else std::cout << " ";
+    }
+    
+    std::cout << "] " << int(progress * 100.0) << " %\r";
+    std::cout.flush();
+  }  
+}
+
+
+float DiJetMassCorrection(std::vector<ComJet>  &Jets, bool ReArrange = false){
+
+  /*******************************************
+            Dijet Invariant Mass 
+  *******************************************/
+  int InvMassIndex[2];
+  float minDeltaMjj = 9999.;
+  float Mjj = 0.0;
+  
+  for(int ijet=0; ijet < Jets.size(); ijet++){
+    
+    ComJet jet_i = Jets[ijet];
+    
+    for(int jjet=ijet+1; jjet < Jets.size(); jjet++){
+      ComJet jet_j = Jets[jjet];
+      
+      float DijetInvMass = (jet_i+jet_j).M(); 
+      float DeltaMjj = std::abs(DijetInvMass-80.3);
+      
+      if(minDeltaMjj > DeltaMjj){
+	minDeltaMjj = DeltaMjj;
+	Mjj = DijetInvMass;
+	InvMassIndex[0] = ijet;
+	InvMassIndex[1] = jjet;
+      }
+      
+    }// for(jjets)
+
+  }// for(ijet)
+
+  // Change of Jet Ordering
+  if(ReArrange && (InvMassIndex[0] > 1 || InvMassIndex[1] > 1)){    
+    ComJet Mjj_a = Jets[InvMassIndex[0]];
+    ComJet Mjj_b = Jets[InvMassIndex[1]];
+  
+    // Delete the Mjj Jets: First the last one!
+    Jets.erase(Jets.begin()+InvMassIndex[1]);
+    Jets.erase(Jets.begin()+InvMassIndex[0]);
+
+    // Move them to the end
+    Jets.push_back(Mjj_a);
+    Jets.push_back(Mjj_b);
+  } // if(ReArrange)
+
+  return Mjj;
+}
+  
 #endif
 
