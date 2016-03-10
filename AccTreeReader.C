@@ -31,7 +31,7 @@
 #include "TError.h"
 
 // TopCode
-
+  
 #ifndef __CINT__
 
 void display_usage()
@@ -39,20 +39,19 @@ void display_usage()
   std::cout << "\033[1;37musage:\033[1;m skimfile cutindex [options]" << std::endl;
   std::cout << "" << std::endl;
   std::cout << "Options:" << std::endl;
-  std::cout << "    -i inputfile  Input file without .root" << std::endl;
-  std::cout << "    -o name in the output file \"h_\"" << std::endl;
-  std::cout << "    -s create a file with the systematic uncertainty yields" << std::endl;
-  std::cout << "    -tr SF Trigger Uncertainty" << std::endl;
-  std::cout << "    -idiso SF ID/ISO Uncertainty" << std::endl;
+  std::cout << "    -i   inputfile  Input file without .root" << std::endl;
+  std::cout << "    -o   name in the output file \"h_\"" << std::endl;
   std::cout << "    -cat ttbar categorization" << std::endl;
-  std::cout << "    -d Input file directory. Default directory: InputTrees" << std::endl;
-  std::cout << "    -h                 displays this help message and exits " << std::endl;
+  std::cout << "    -d   Input file directory. Default directory: InputTrees" << std::endl;
+  std::cout << "    -s create a file with the systematic uncertainty yields" << std::endl;
+  std::cout << "    -h   displays this help message and exits " << std::endl;
   std::cout << "" << std::endl;
 }
 
 
 // Get current date/time, format is YYYY-MM-DD.HH:mm:ss
 const TString currentDateTime() {
+
   time_t     now = time(0);
   struct tm  tstruct;
   char       buf[80];
@@ -93,14 +92,11 @@ int main(int argc, const char* argv[]){
 
   bool   _ttbar_cat = false;
   bool   _syst      = false;
-  bool	 _tr_unc    = false;
-  bool	 _idiso_unc = false;
   const char * _output   = 0;
   const char * _input    = 0;
   // TopTrees directory
-  const char * _dir      = "../Files_v7-6-2/";
-  const char * _tr       = 0;
-  const char * _idiso    = 0;
+  const char * _dir      = "../Files_v7-6-3/";
+  const char * _syst_var = 0;
   const char * _ttbar_id = 0;
 
   // Arguments used
@@ -131,6 +127,10 @@ int main(int argc, const char* argv[]){
 	  _ttbar_id  = argv[i+1];
 	  i++;
 	}
+	if( strcmp(argv[i],"-s") == 0 ){
+	  _syst= true;
+	  _syst_var = argv[i+1];
+	}
 	if( strcmp(argv[i],"-h") == 0 ||
 	    strcmp(argv[i],"--help") == 0 ){
 	  display_usage();
@@ -150,6 +150,7 @@ int main(int argc, const char* argv[]){
   TString hname(_output);
   TString fdir(_dir);
   TString ttbar_id(_ttbar_id);
+  TString syst_varname(_syst_var);
   
   TChain theTree("ttbbLepJets/gentree"); 
   
@@ -161,6 +162,7 @@ int main(int argc, const char* argv[]){
 
   int Channel;
   float GENWeight; 
+  std::vector<float> *ScaleWeight=0;
   float Lep_pT, Lep_eta;
   std::vector<float> *Jet_pT=0;
   std::vector<int>   *Jet_partonFlavour=0;
@@ -172,13 +174,16 @@ int main(int argc, const char* argv[]){
            Tree Branches
   **********************************/
   
-  theTree.SetBranchAddress( "genchannel",   &Channel );
+  theTree.SetBranchAddress( "genweight", &GENWeight );
+  theTree.SetBranchAddress( "scaleweight",  &ScaleWeight);
+  theTree.SetBranchAddress( "genchannel",   &Channel);
   theTree.SetBranchAddress( "gencatid",     &GenCat_ID);
   theTree.SetBranchAddress( "genconecatid", &GenConeCat);
 
-  theTree.SetBranchAddress( "genlepton_pT",  &Lep_pT );
-  theTree.SetBranchAddress( "genlepton_eta", &Lep_eta );
-  theTree.SetBranchAddress( "genjet_pT",     &Jet_pT );
+
+  theTree.SetBranchAddress( "genlepton_pT",  &Lep_pT);
+  theTree.SetBranchAddress( "genlepton_eta", &Lep_eta);
+  theTree.SetBranchAddress( "genjet_pT",     &Jet_pT);
 
     
   /*********************************
@@ -232,11 +237,20 @@ int main(int argc, const char* argv[]){
   ///////////////////////////////////////
   // Number de events for acceptance
   //          [Channel]
+  float fAccEvent_full_ttbb[2]={0.0,0.0};
+  float fAccEvent_full_ttjj[2]={0.0,0.0};
+  
+  float fAccEvent_vis_ttbb[2]={0.0,0.0};
+  float fAccEvent_vis_ttjj[2]={0.0,0.0};
+
   int AccEvent_full_ttbb[2]={0,0};
   int AccEvent_full_ttjj[2]={0,0};
   
   int AccEvent_vis_ttbb[2]={0,0};
   int AccEvent_vis_ttjj[2]={0,0};
+
+  // Uncertainties file name
+  if(_syst) fname += "_SYS_" + syst_varname;
 
   /********************************
              Event Loop
@@ -314,15 +328,32 @@ int main(int argc, const char* argv[]){
     int cone_NaddJets  = (*GenConeCat)[5];
     int cone_NaddbJets = (*GenConeCat)[6];
 
+
     /******************
+      Scale Weights
+    ******************/
+    int scaleSysPar;
+    if     (_syst && syst_varname.Contains("ScaleRnF_Up"))   scaleSysPar = 0; // muR=Nom,  muF=Up
+    else if(_syst && syst_varname.Contains("ScaleRnF_Down")) scaleSysPar = 1; // muR=Nom,  muF=Down
+    else if(_syst && syst_varname.Contains("ScaleRuF_Nom"))  scaleSysPar = 2; // muR=Up,   muF=Nom
+    else if(_syst && syst_varname.Contains("ScaleRuF_Up"))   scaleSysPar = 3; // muR=Up,   muF=Up
+    else if(_syst && syst_varname.Contains("ScaleRdF_Nom"))  scaleSysPar = 4; // muR=Down, muF=Nom
+    else if(_syst && syst_varname.Contains("ScaleRdF_Down")) scaleSysPar = 5; // muR=Down, muF=Down
+
+    float EvtStep = GENWeight;
+    
+    if (_syst && syst_varname.Contains("ScaleR"))
+      EvtStep = EvtStep*(*ScaleWeight)[scaleSysPar];
+
+     /******************
          Acceptace
     ******************/
-    if(cone_NaddJets  > 1) AccEvent_full_ttjj[Channel]++;
-    if(cone_NaddbJets > 1) AccEvent_full_ttbb[Channel]++;
+    if(cone_NaddJets  > 1) fAccEvent_full_ttjj[Channel]+=EvtStep;
+    if(cone_NaddbJets > 1) fAccEvent_full_ttbb[Channel]+=EvtStep;
 
     if(Lep_pT > 30 && abs(Lep_eta) < 2.4){
-      if(cone_NbJets > 1 && cone_NJets > 5) AccEvent_vis_ttjj[Channel]++;
-      if(cone_NbJets > 3 && cone_NJets > 5) AccEvent_vis_ttbb[Channel]++;    
+      if(cone_NbJets > 1 && cone_NJets > 5) fAccEvent_vis_ttjj[Channel]+=EvtStep;
+      if(cone_NbJets > 3 && cone_NJets > 5) fAccEvent_vis_ttbb[Channel]+=EvtStep;    
     }
     
 
@@ -330,10 +361,20 @@ int main(int argc, const char* argv[]){
         Histograms
     ******************/
     hNJets[Channel]->Fill(NJets); 
-    //hNJets[Channel]->Fill(NBtagJets);
   
   }//for(events)
-  
+
+  AccEvent_full_ttjj[0] = fAccEvent_full_ttjj[0];
+  AccEvent_full_ttbb[0] = fAccEvent_full_ttbb[0];
+
+  AccEvent_vis_ttjj[0] = fAccEvent_vis_ttjj[0];
+  AccEvent_vis_ttbb[0] = fAccEvent_vis_ttbb[0];
+
+  AccEvent_full_ttjj[1] = fAccEvent_full_ttjj[1];
+  AccEvent_full_ttbb[1] = fAccEvent_full_ttbb[1];
+
+  AccEvent_vis_ttjj[1] = fAccEvent_vis_ttjj[1];
+  AccEvent_vis_ttbb[1] = fAccEvent_vis_ttbb[1];
   
   // Get elapsed time
   sw.Stop();

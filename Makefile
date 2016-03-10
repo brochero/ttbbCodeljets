@@ -21,5 +21,11 @@ TopTools/SF_btag/BTagCalibrationStandalone.o: TopTools/SF_btag/BTagCalibrationSt
 TopTools/SF_Lumi/SFLumi.o: TopTools/SF_Lumi/SFLumi.C
 	g++ -std=c++11 -static -I `root-config --incdir` -c TopTools/SF_Lumi/SFLumi.C -o TopTools/SF_Lumi/SFLumi.o
 
+AccTreeReader.run:  AccTreeReader.o 
+	g++ -o AccTreeReader.run AccTreeReader.o `root-config --libs`
+
+AccTreeReader.o: AccTreeReader.C
+	g++ -std=c++11 -static -I`root-config --incdir` -c -g AccTreeReader.C
+
 clean:
-	rm TreeReader.run TreeReader.o TopTools/SF_ID-ISO-Trigger/SFIDISOTrigger.o TopTools/ttbar_Categorization/ttbar_category.o TopTools/SF_btag/BTagCalibrationStandalone.o TopTools/SF_btag/BTagSFUtil.o TopTools/SF_Lumi/SFLumi.o
+	rm TreeReader.run TreeReader.o AccTreeReader.run AccTreeReader.o TopTools/SF_ID-ISO-Trigger/SFIDISOTrigger.o TopTools/ttbar_Categorization/ttbar_category.o TopTools/SF_btag/BTagCalibrationStandalone.o TopTools/SF_btag/BTagSFUtil.o TopTools/SF_Lumi/SFLumi.o
