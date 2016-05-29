@@ -1,10 +1,12 @@
 #include "Plots.h"
-
-void Plots(TString plots="2btag", bool LogScale=false){
+ 
+void Plots(TString plots="2btag", bool LogScale=false) {
   
   /****************
         Style
   ****************/
+  setTDRStyle();
+
   gROOT->SetStyle("Plain");
   gStyle->SetOptFit(1000);
   gStyle->SetOptStat("emruo");
@@ -12,8 +14,6 @@ void Plots(TString plots="2btag", bool LogScale=false){
   gStyle->SetPadTickY(1);
   gStyle->SetPadTickX(1);
   
-  gROOT->ProcessLine(".L tdrStyle.C");
-  setTDRStyle();
   
   Int_t chatch = 1756;
   TColor *color = new TColor(chatch, 0.3, 0.5, 0.5, "", 0.45); // alpha = 0.5
@@ -75,11 +75,6 @@ void Plots(TString plots="2btag", bool LogScale=false){
   ttbar_0_ttLF = loadhistograms(plots, files + "_ttbar_PowhegPythiattLF");
   setuphistograms(ttbar_0_ttLF, col_ttLF);
   
-  // Systematic Uncertainty
-  // std::vector<histos> ttbar_syst;
-  // ttbar_syst = loadhistograms(plots, files + "_ttbar_PowhegPythiaAllSyst");
-  // setuphistograms(ttbar_syst, col_tt);
-
   /****************
      Other ttbar
   ****************/ 
@@ -158,6 +153,15 @@ void Plots(TString plots="2btag", bool LogScale=false){
   QCD = addhistograms(QCD_Mu, QCD_EG);
   setuphistograms(QCD, col_QCD);
 
+
+  /****************
+    All Syst Unc
+  ****************/ 
+  std::vector<histos> MC_syst;
+  MC_syst = loadhistograms(plots, files + "_MCAllSyst");
+  setuphistograms(MC_syst, col_tt);
+
+
   /****************
        Stacks
   ****************/ 
@@ -223,9 +227,6 @@ void Plots(TString plots="2btag", bool LogScale=false){
   ttbar_2 = addhistograms(ttbar_2, Stack_bkg);
   //-------------------------------------------------------
   //-------------------------------------------------------
-  // Systematic Uncertainties
-  //ttbar_syst = addhistograms(ttbar_syst, );
-
   
   /****************
      Draw Histos
@@ -249,7 +250,7 @@ void Plots(TString plots="2btag", bool LogScale=false){
       //Ratio Pad
       pad[1] = (TPad*)histocanvas->GetPad(2);
       pad[1]->SetPad(0.01, 0.02, 0.99, 0.3);
-      gStyle->SetGridWidth(0.5);
+      gStyle->SetGridWidth(1);
       gStyle->SetGridColor(14);
       pad[1]->SetGridx();
       pad[1]->SetGridy();
@@ -286,8 +287,8 @@ void Plots(TString plots="2btag", bool LogScale=false){
       
       //-------------------------------------------------------
       // Band error
-      //TGraphErrors *thegraph = new TGraphErrors(ttbar_syst[h].hist[ch]);
-      TGraphErrors *thegraph = new TGraphErrors(Stack[h].hist[ch]);
+      TGraphErrors *thegraph = new TGraphErrors(MC_syst[h].hist[ch]);
+      // TGraphErrors *thegraph = new TGraphErrors(Stack[h].hist[ch]);
       thegraph->SetName("thegraph");
       thegraph->SetFillStyle(1001);
       thegraph->SetFillColor(chatch);
@@ -345,7 +346,7 @@ void Plots(TString plots="2btag", bool LogScale=false){
       //leg->AddEntry("thegraph","Uncertainty","F");
       leg->AddEntry("thegraph","Total Unc.","F");
       leg->AddEntry((TObject*)0,"","");
-      leg->AddEntry(ttbar_1[h].hist[ch],"MC@NLO","L");
+      leg->AddEntry(ttbar_1[h].hist[ch],"aMC@NLO","L");
       leg->AddEntry((TObject*)0,"","");
       leg->AddEntry(ttbar_2[h].hist[ch],"Madgraph","L");
 
@@ -356,7 +357,8 @@ void Plots(TString plots="2btag", bool LogScale=false){
       htitleCMSChannel[0] = "#mu^{#pm}+jets channel";
       htitleCMSChannel[1] = "e^{#pm}+jets channel";
       htitleCMSChannel[2] = "l^{#pm}+jets channel";
-      
+
+      TLatex *titlePr;      
       titlePr  = new TLatex(-20.,50.,"Preliminary");
       titlePr->SetNDC();
       titlePr->SetTextAlign(12);
@@ -368,7 +370,8 @@ void Plots(TString plots="2btag", bool LogScale=false){
       titlePr->SetTextSizePixels(24);
       titlePr->Draw("SAME");
       
-      title  = new TLatex(-20.,50.,"CMS #sqrt{s} = 13TeV, L = 2.26 fb^{-1}");
+      TLatex *title;
+      title  = new TLatex(-20.,50.,"CMS #sqrt{s} = 13TeV, L = 2.2 fb^{-1}");
       title->SetNDC();
       title->SetTextAlign(12);
       title->SetX(0.20);
@@ -378,6 +381,7 @@ void Plots(TString plots="2btag", bool LogScale=false){
       title->SetTextSizePixels(24);
       title->Draw("SAME");
       
+      TLatex *chtitle;
       chtitle  = new TLatex(-20.,50.,htitleCMSChannel[ch]);
       chtitle->SetNDC();
       chtitle->SetTextAlign(12);
@@ -401,8 +405,8 @@ void Plots(TString plots="2btag", bool LogScale=false){
 
       TH1F *RatioSyst;
       RatioSyst = (TH1F*)Data[h].hist[ch]->Clone();
-      //RatioSyst->Divide(ttbar_syst[h].hist[ch]); // Should be the histogram with the Total Syst. Unc.
-      RatioSyst->Divide(Stack[h].hist[ch]); // Should be the histogram with the Total Syst. Unc.
+      RatioSyst->Divide(MC_syst[h].hist[ch]); // Should be the histogram with the Total Syst. Unc.
+      // RatioSyst->Divide(Stack[h].hist[ch]); // Should be the histogram with the Total Syst. Unc.
       std::vector<double> ratioContent;
       for(unsigned int b_r = 1; b_r <= RatioSyst->GetNbinsX(); b_r++){
 	RatioSyst->SetBinContent(b_r,1.0);
@@ -573,13 +577,46 @@ std::vector<histos> loadhistograms(TString plots, TString namefile){
   histoname.push_back("hJetPt_Jet-1");
   histoname.push_back("hJetPt_Jet-2");
   histoname.push_back("hJetPt_Jet-3");
+  histoname.push_back("hJetPt_Jet-4");
+  histoname.push_back("hJetPt_Jet-5");
   histoname.push_back("hNJets");
   histoname.push_back("hNBtagJets");
   histoname.push_back("hCSV_Jet-0");
   histoname.push_back("hCSV_Jet-1");
   histoname.push_back("hCSV_Jet-2");
   histoname.push_back("hCSV_Jet-3");
+  histoname.push_back("hCSV_Jet-4");
+  histoname.push_back("hCSV_Jet-5");
+  // histoname.push_back("hMassJet_Jet01");
+  // histoname.push_back("hMassJet_Jet02");
+  // histoname.push_back("hMassJet_Jet03");
+  // histoname.push_back("hMassJet_Jet04");
+  // histoname.push_back("hMassJet_Jet05");
+  // histoname.push_back("hMassJet_Jet12");
+  // histoname.push_back("hMassJet_Jet13");
+  // histoname.push_back("hMassJet_Jet14");
+  // histoname.push_back("hMassJet_Jet15");
+  histoname.push_back("hMassJet_Jet23");
+  // histoname.push_back("hMassJet_Jet24");
+  // histoname.push_back("hMassJet_Jet25");
+  // histoname.push_back("hMassJet_Jet34");
+  // histoname.push_back("hMassJet_Jet35");
+  // histoname.push_back("hMassJet_Jet45");
+  histoname.push_back("hInvMassjj");
   histoname.push_back("hmT");
+  histoname.push_back("hMaxMVAjj");
+  histoname.push_back("hCvsL_Jet-0");
+  histoname.push_back("hCvsL_Jet-1");
+  histoname.push_back("hCvsL_Jet-2");
+  histoname.push_back("hCvsL_Jet-3");
+  histoname.push_back("hCvsL_Jet-4");
+  histoname.push_back("hCvsL_Jet-5");
+  histoname.push_back("hCvsB_Jet-0");
+  histoname.push_back("hCvsB_Jet-1");
+  histoname.push_back("hCvsB_Jet-2");
+  histoname.push_back("hCvsB_Jet-3");
+  histoname.push_back("hCvsB_Jet-4");
+  histoname.push_back("hCvsB_Jet-5");
 
   for(unsigned int h=0; h<histoname.size(); h++){
     for(unsigned int ch=0; ch<2; ch++) histofile.hist[ch] = (TH1F*)file->Get(histoname[h] + "_" + channel[ch] + "_" + plots);

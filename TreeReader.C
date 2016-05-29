@@ -8,6 +8,7 @@
 #include<cmath>
 #include<set>
 #include<vector>
+#include <sys/stat.h>
 
 #endif
 
@@ -30,27 +31,33 @@
 //#include "TKey.h"
 //#include "TPrint.h"
 //#include <exception>
-#include <sys/stat.h>
 #include "TError.h"
+// TMVA
+#include "TMVA/MethodCategory.h"
+#include "TMVA/Factory.h"
+#include "TMVA/Tools.h"
+#include "TMVA/TMVAGui.h"
+#include <TMVAClassification_BDT.class.C>
 
 // TopCode
 #include <SFIDISOTrigger.h> // SF_ID-ISO-Trigger
 #include <ttbar_category.h> // Event Categorization
-#include <BTagSFUtil.h>     // btag SF
 #include <SFLumi.h>         // Normalization SF
+#include <MVATraining.h>    // Dijet MVA Training
 
 #ifndef __CINT__
 
 // Jet Class
 class ComJet: public TLorentzVector{
 public:
-  float CSV;
-  int Flavour, pTIndex;
+  float CSV, CvsL, CvsB;
+  int Flavour, pTIndex, Mom;
 };
 
 void print_progress(int TreeEntries, Long64_t ievt);
 const TString currentDateTime();
 float DiJetMassCorrection(std::vector<ComJet> &Jets, bool ReArrange);
+std::vector<std::vector<float>> DiJetVariableEstimation(std::vector<ComJet>  &Jets, float DRAddJets, bool MVA, IClassifierReader *classReader);
 
 
 void display_usage()
@@ -98,7 +105,7 @@ int main(int argc, const char* argv[]){
   const char * _output   = 0;
   const char * _input    = 0;
   // TopTrees directory
-  const char * _dir      = "../Files_v7-6-3/";
+  const char * _dir      = "../Files_v7-6-4/";
   const char * _syst_var = 0;
   const char * _tr       = 0;
   const char * _idiso    = 0;
@@ -169,6 +176,13 @@ int main(int argc, const char* argv[]){
   TString IDISOUnc(_idiso);
   TString ttbar_id(_ttbar_id);
   
+  //Output Dir
+  TString dirname="TopResults";   
+  // make a dir if it does not exist!!
+  struct stat st;
+  if(stat(dirname,&st) != 0) system("mkdir " + dirname);
+
+
   TChain theTree("ttbbLepJets/tree"); 
   
   std::cout << "---------------------------------------------------------------------------------" << std::endl;
@@ -187,7 +201,6 @@ int main(int argc, const char* argv[]){
   float PUWeight, GENWeight; 
   std::vector<float> *PUWeight_sys=0;
 
-
   float MET,MET_Phi;
 
   float Lep_px, Lep_py, Lep_pz, Lep_E;
@@ -196,13 +209,18 @@ int main(int argc, const char* argv[]){
 
   std::vector<float> *Jet_px=0, *Jet_py=0, *Jet_pz=0, *Jet_E=0;
   std::vector<int>   *Jet_partonFlavour=0;
+  std::vector<int>   *Jet_pTIndex=0;
+  std::vector<int>   *Jet_GENmatched=0, *GenJet_Mom=0;
   std::vector<float> *Jet_CSV=0;
   std::vector<float> *Jet_SF_CSV=0;
+  std::vector<float> *Jet_CSVCvsL=0;
+  std::vector<float> *Jet_CvsL=0, *Jet_CvsB=0;
   std::vector<float> *Jet_JER_Up=0, *Jet_JER_Nom=0, *Jet_JER_Down=0;
   std::vector<float> *Jet_JES_Up=0, *Jet_JES_Down=0;
 
   // GEN Info
   std::vector<int> *GenConeCat=0;
+  float DRAddJets;
   float GenLep_pT;
   std::vector<float> *GenJet_pT=0;
 
@@ -237,9 +255,15 @@ int main(int argc, const char* argv[]){
   theTree.SetBranchAddress( "jet_pz", &Jet_pz );
   theTree.SetBranchAddress( "jet_E",  &Jet_E );
 
+  theTree.SetBranchAddress( "jet_index",  &Jet_pTIndex );
+
   theTree.SetBranchAddress( "jet_CSV",  &Jet_CSV );
   theTree.SetBranchAddress( "jet_SF_CSV",  &Jet_SF_CSV );
   theTree.SetBranchAddress( "jet_partonFlavour",  &Jet_partonFlavour );
+
+  theTree.SetBranchAddress( "jet_iCSVCvsL", &Jet_CSVCvsL );
+  theTree.SetBranchAddress( "jet_CCvsLT",  &Jet_CvsL );
+  theTree.SetBranchAddress( "jet_CCvBLT",  &Jet_CvsB );
 
 
   if(!fname.Contains("Data")){
@@ -279,8 +303,10 @@ int main(int argc, const char* argv[]){
   if(fname.Contains("ttbar") && !fname.Contains("Bkg")){
     theTree.SetBranchAddress("scaleweight",  &ScaleWeight );
     theTree.SetBranchAddress("genconecatid", &GenConeCat);
+    theTree.SetBranchAddress("draddjets", &DRAddJets);
     theTree.SetBranchAddress("genlepton_pT", &GenLep_pT);
-    theTree.SetBranchAddress("genjet_pT",    &GenJet_pT);
+    theTree.SetBranchAddress("jet_MatchedGenJetIndex", &Jet_GENmatched);
+    theTree.SetBranchAddress("genjet_mom", &GenJet_Mom);
   }
 
   /*********************************
@@ -300,11 +326,12 @@ int main(int argc, const char* argv[]){
 
   TH1F *hNJets[4][2], *hHT[4][2], *hNBtagJets[4][2];
   TH1F *hCSV[6][4][2], *hJetPt[6][4][2], *hJetpTUncVar[6][4][2];
+  TH1F *hCvsL[6][4][2], *hCvsB[6][4][2]; 
   TH2F *h2DCSV_23Jet[4][2], *h2DCSV_45Jet[4][2]; 
   TH2F *h2DCSV_24Jet[4][2], *h2DCSV_25Jet[4][2];
   TH2F *h2DCSV_34Jet[4][2], *h2DCSV_35Jet[4][2];
   TH1F *hMassJet[5][6][4][2];
-  TH1F *hInvMassjj[4][2];
+  TH1F *hInvMassjj[4][2], *hMaxMVAjj[4][2];
 
   TH1F *hSFpT[4][2], *hSFpTError[4][2];
   TH1F *hSFIDISO[4][2], *hSFIDISOError[4][2];
@@ -315,9 +342,13 @@ int main(int argc, const char* argv[]){
 
   TH1F *hEvtCatego[4][2];
 
-  TString namech[2];
+  TH1F *hTJetPosition, *hWJetPosition, *hOJetPosition;
+  TH2F *h2DTJetPosition, *h2DWJetPosition, *h2DOJetPositionMVA;
+
+  TString namech[3];
   namech[0]="mujets";
   namech[1]="ejets";
+  namech[2]="lepjets";
   
   TString namecut[4];
   namecut[0]="lepton";
@@ -437,6 +468,10 @@ int main(int argc, const char* argv[]){
       for(int ij=0; ij<6; ij++){
 	hCSV[ij][j][i] = new TH1F("hCSV_" + jetn[ij] + "_" + namech[i] + "_" + namecut[j],"CSV " + jetn[ij] + " " + titlenamech[i],10,0,1);
 	hCSV[ij][j][i]->GetXaxis()->SetTitle("CSVv2");      
+	hCvsL[ij][j][i] = new TH1F("hCvsL_" + jetn[ij] + "_" + namech[i] + "_" + namecut[j],"CvsL " + jetn[ij] + " " + titlenamech[i],10,0,1);
+	hCvsL[ij][j][i]->GetXaxis()->SetTitle("CvsL");      
+	hCvsB[ij][j][i] = new TH1F("hCvsB_" + jetn[ij] + "_" + namech[i] + "_" + namecut[j],"CvsB " + jetn[ij] + " " + titlenamech[i],10,0,1);
+	hCvsB[ij][j][i]->GetXaxis()->SetTitle("CvsB");      
 	hJetPt[ij][j][i] = new TH1F("hJetPt_" + jetn[ij] + "_" + namech[i] + "_" + namecut[j],"p_{T}^{Jet} " + jetn[ij] + " " + titlenamech[i],10,0,200);
 	hJetPt[ij][j][i]->GetXaxis()->SetTitle("p_{T}[GeV]");      
 
@@ -467,13 +502,61 @@ int main(int argc, const char* argv[]){
 	}
       }
       hInvMassjj[j][i]  = new TH1F("hInvMassjj_" + namech[i]+"_"+namecut[j],"Compatible Inv. Mass " + titlenamech[i],80,0,400);
-      
+      hMaxMVAjj[j][i]   = new TH1F("hMaxMVAjj_"  + namech[i]+"_"+namecut[j],"Max. MVA (BDT) response " + titlenamech[i],20,-0.5,0.5);
+
       hEvtCatego[j][i]  = new TH1F("hEvtCatego_"+namech[i]+"_"+namecut[j],"ttbar Event Categorization " + titlenamech[i],4,-0.5,3.5);
       hEvtCatego[j][i]->GetXaxis()->SetTitle("ttbar");      
 
     }//for(i)
   }//for(j)
   
+
+  hTJetPosition = new TH1F("hTJetPosition","CSV Position for jets from Top",  7,0,7);
+  hWJetPosition = new TH1F("hWJetPosition","CSV Position for jets from W",    7,0,7);
+  hOJetPosition = new TH1F("hOJetPosition","CSV Position for additional jets",7,0,7);
+  
+  h2DTJetPosition    = new TH2F("h2DTJetPosition","CSV Position for jets from Top Vs Dijet Rank",  7,0,7,7,0,7);
+  h2DWJetPosition    = new TH2F("h2DWJetPosition","CSV Position for jets from W Vs Dijet Rank",    7,0,7,7,0,7);
+  h2DOJetPositionMVA = new TH2F("h2DOJetPositionMVA","CSV Position for additional jets Vs MVA", 7,0,7,7,0,7);
+  
+
+  /************************
+     MVA Training Trees
+  *************************/
+  // --- Write histograms
+  TString outTFN = dirname + "/MVATrees" + hname + "_" + fname + ".root";
+  TFile *TreeFile = new TFile(outTFN,"RECREATE" );
+
+  std::vector<float> *Tvinput;
+  Tvinput = new std::vector<float>;
+  for (unsigned int nv = 0; nv < 10; nv++)  Tvinput->push_back(0);
+
+  TTree *TMVASignal;
+  TMVASignal = new TTree("TMVASignal","Signal Dijets");
+  TMVASignal->Branch("pTjj",   &Tvinput->at(0),   "pTjj/F");
+  TMVASignal->Branch("Mjj",    &Tvinput->at(1),    "Mjj/F");
+  TMVASignal->Branch("DRjj",   &Tvinput->at(2),   "DRjj/F");
+  TMVASignal->Branch("DPhijj", &Tvinput->at(3), "DPhijj/F");
+  TMVASignal->Branch("CvsL1",  &Tvinput->at(4),  "CvsL1/F");
+  TMVASignal->Branch("CvsL2",  &Tvinput->at(5),  "CvsL2/F");
+  TMVASignal->Branch("CvsB1",  &Tvinput->at(6),  "CvsB1/F");
+  TMVASignal->Branch("CvsB2",  &Tvinput->at(7),  "CvsB2/F");
+  TMVASignal->Branch("CSV1",   &Tvinput->at(8),   "CSV1/F");
+  TMVASignal->Branch("CSV2",   &Tvinput->at(9),   "CSV2/F");
+
+  TTree *TMVABkg;
+  TMVABkg = new TTree("TMVABkg","Background Dijets");
+  TMVABkg->Branch("pTjj",   &Tvinput->at(0),   "pTjj/F");
+  TMVABkg->Branch("Mjj",    &Tvinput->at(1),    "Mjj/F");
+  TMVABkg->Branch("DRjj",   &Tvinput->at(2),   "DRjj/F");
+  TMVABkg->Branch("DPhijj", &Tvinput->at(3), "DPhijj/F");
+  TMVABkg->Branch("CvsL1",  &Tvinput->at(4),  "CvsL1/F");
+  TMVABkg->Branch("CvsL2",  &Tvinput->at(5),  "CvsL2/F");
+  TMVABkg->Branch("CvsB1",  &Tvinput->at(6),  "CvsB1/F");
+  TMVABkg->Branch("CvsB2",  &Tvinput->at(7),  "CvsB2/F");
+  TMVABkg->Branch("CSV1",   &Tvinput->at(8),   "CSV1/F");
+  TMVABkg->Branch("CSV2",   &Tvinput->at(9),   "CSV2/F");
+
 
   TStopwatch sw;
   sw.Start(kTRUE);
@@ -587,10 +670,6 @@ int main(int argc, const char* argv[]){
   float CSV_WP = 0.800; // Medium
   //float CSV_WP = 0.935; // Tight
   int btagSysPar = 0;
-  // BTagSFUtil *fBTagSF;   //The BTag SF utility
-  // BTagSFUtil *fBTagSFT;   //The BTag SF utility
-  // fBTagSF = new BTagSFUtil("CSV", "Medium", btagSysPar); 
-  // fBTagSF = new BTagSFUtil("CSV", "Tight", btagSysPar); 
 
   // Global SF uncertainty: 18 Components
   if     (_syst && syst_varname.Contains("btagjes_Up"))     btagSysPar = btagUnc::JES_UP;
@@ -646,6 +725,23 @@ int main(int argc, const char* argv[]){
   std::cout << "Normalization Factor = " << NormWeight  << std::endl;
   std::cout << "---------------------------------------------------------------------------------" << std::endl;
 
+  /************************
+      MVA: BDT branches
+  *************************/  
+  std::vector<std::string> inputVariableNames;
+  inputVariableNames.push_back("pTjj");
+  inputVariableNames.push_back("Mjj");
+  inputVariableNames.push_back("DRjj");
+  inputVariableNames.push_back("DPhijj");    
+  inputVariableNames.push_back("CvsL1");    
+  inputVariableNames.push_back("CvsL2");    
+  inputVariableNames.push_back("CvsB1");    
+  inputVariableNames.push_back("CvsB2");    
+  inputVariableNames.push_back("CSV1");    
+  inputVariableNames.push_back("CSV2");    
+  IClassifierReader *classReader = new ReadBDT(inputVariableNames);
+
+
 
   /********************************
              Event Loop
@@ -653,7 +749,7 @@ int main(int argc, const char* argv[]){
   std::cout << "--- Processing: " << theTree.GetEntries() << " events" << std::endl;
   
   for (Long64_t ievt=0; ievt<theTree.GetEntries();ievt++) {
-    //for (Long64_t ievt=0; ievt<10000;ievt++) {
+    // for (Long64_t ievt=0; ievt<10000;ievt++) {
     
     theTree.GetEntry(ievt);  
     print_progress(theTree.GetEntries(), ievt);
@@ -721,8 +817,9 @@ int main(int argc, const char* argv[]){
     
     std::vector<ComJet> Jets;
     
+
     for(int ijet=0; ijet < Jet_px->size(); ijet++){
-      
+
       float JetSystVar = 1.0;
       if(_syst){
 	if(syst_varname.Contains("JES_Up")){
@@ -749,9 +846,14 @@ int main(int argc, const char* argv[]){
 		     (*Jet_E)[ijet]);
       jet.Flavour = (*Jet_partonFlavour)[ijet];
       jet.CSV = (*Jet_CSV)[ijet];
+      jet.CvsL = (*Jet_CvsL)[ijet];
+      jet.CvsB = (*Jet_CvsB)[ijet];
+      jet.Mom = -1;
+      if((fname.Contains("ttbar")  && !fname.Contains("Bkg")) && 
+	 (*Jet_GENmatched)[ijet] != -999) jet.Mom = (*GenJet_Mom)[(*Jet_GENmatched)[ijet]];
 
       if(jet.Pt() > 25){ // Jet pT Cut
-		
+	//std::cout << "Evt = " << Event << " RECO-pT = " << jet.Pt() << " RECO-Flv = " << jet.Flavour << " GEN-Match = " << (*Jet_GENmatched)[ijet] << " GEN-Mom = " << jet.Mom << std::endl; 		
 	Jets.push_back(jet);
 
 	/*******************************************
@@ -761,8 +863,7 @@ int main(int argc, const char* argv[]){
 	// b-tagging WP from https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideBTagging
 	// Not recommended for analysis with observables that depends ontagging.
 	// if (fname.Contains("Data")) btagDisc = fBTagSF->IsTagged((*Jet_CSV)[ijet], -999999, jet.Pt(), jet.Eta());
-	// else btagDisc = fBTagSF->IsTagged((*Jet_CSV)[ijet], JetFlav, jet.Pt(), jet.Eta());
-	
+	// else btagDisc = fBTagSF->IsTagged((*Jet_CSV)[ijet], JetFlav, jet.Pt(), jet.Eta()); 
 	// New Method (Event SF from tth group)
 	// https://twiki.cern.ch/twiki/bin/view/CMS/BTagShapeCalibration
 	if(jet.CSV > CSV_WP) NBtagJets++; // Number of b-tagged jets
@@ -772,15 +873,147 @@ int main(int argc, const char* argv[]){
     
     NJets = Jets.size();
 
-    /*******************************************
-              Dijet Invariant Mass 
-    *******************************************/
-    float Mjj = 0.0;    
-    if(NJets > 5 && NBtagJets > 1){ // Only Final Cut Level
-      Mjj = DiJetMassCorrection(Jets, true);
-    } //if (6jets)    
+    float Mjj    = 0.0; // Dijet Inv. Mass   
+    float MaxMVA = 0.0; // Maximum MVA   
     
-    // Number of GENJets
+    // Only Final Cut Level
+    if(NJets > 5 && NBtagJets > 1){ 
+      // Estimation of the DiJet invariant mass closest to the W mass
+      bool ReArrangeMjj = false; // Jets keep the same order
+      Mjj = DiJetMassCorrection(Jets, ReArrangeMjj);
+      
+      /*******************************************
+                      TMVA:BDT
+      *******************************************/
+      std::vector<std::vector<float>> Dijet_Var;
+      // 0: Dijet Tagger (To produce the training tree) 
+      // 1: Jet0 Index 
+      // 2: Jet1 Index 
+      // 3: MVA Response 
+      // 4: Dijet_M;
+      // 5: Dijet_pT;
+      // 6: Dijet_DPhi;
+      // 7: Dijet_DR;
+      bool MVAEstimation = true;
+      Dijet_Var = DiJetVariableEstimation(Jets, DRAddJets, MVAEstimation, classReader);
+
+      // Estimation of the BEST Dijet using MVA Response
+      std::vector<int> AddDiJetMVAIndex;
+      // 0: Jet0  Index
+      // 1: Jet1  Index
+      // 2: DiJet Index
+      AddDiJetMVAIndex  = MVAResponse (Dijet_Var);
+      MaxMVA = Dijet_Var.at(3).at(2);
+
+      
+      //----------------------------------------
+      // MVA Arrange
+      if(AddDiJetMVAIndex[0] > 1 && AddDiJetMVAIndex[1] > 1){ // Rearrange jet positions > 1	
+      ComJet Jet0 = Jets.at(2);
+      ComJet Jet1 = Jets.at(3);
+      
+      Jets.at(2) = Jets.at(AddDiJetMVAIndex[0]);      
+      Jets.at(3) = Jets.at(AddDiJetMVAIndex[1]);      
+      Jets.at(AddDiJetMVAIndex[0]) = Jet0;
+      Jets.at(AddDiJetMVAIndex[1]) = Jet1;
+      
+      } // if(AddDiJetMVAIndex[JetPos] > 1)
+      
+      
+      if (fname.Contains("ttbar")  && !fname.Contains("Bkg")){
+	/*******************************************
+             TEMPORAL -- ttjj Studie: Mom match 
+	*******************************************/
+	int TJet = 0, WJet = 0, AddJet = 0;
+	
+	if(NJets == 6){
+	  for (unsigned int ij = 0; ij < NJets; ij ++){
+	    ComJet jetcand = Jets[ij]; 
+	    if (jetcand.Mom == 6   && std::abs(jetcand.Flavour) == 5) TJet++;
+	    else if (jetcand.Mom == 24  && std::abs(jetcand.Flavour) != 5) WJet++;
+	    else if (jetcand.Mom != 24  && jetcand.Mom != 6) AddJet++;
+	  } // for(ij)
+	}// if(NJets > 5)
+	
+	//if (!(TJet == 2 && WJet == 2 && AddJet == 2)) continue; // Jump Event 
+
+	// --WARNING!!
+	// W Jets to the end of the Jet Vector    
+	// ComJet Wjj_a = Jets[WIndex[0]];
+	// ComJet Wjj_b = Jets[WIndex[1]];
+	// Jets.erase(Jets.begin() + WIndex[1]);
+	// Jets.erase(Jets.begin() + WIndex[0]);
+	// Jets.push_back(Wjj_a);
+	// Jets.push_back(Wjj_b);
+	/*******************************************
+                       TEMPORAL END
+	*******************************************/
+      
+	//----------------------------------------
+	// Fill Training Trees: Signal (Add DiJet) and Bkg (W Dijet)
+	// MVATrainingTree(TMVASignal, TMVABkg, Dijet_Var, Tvinput);
+	
+	// Estimation of the W and Top Dijet using GEN info
+	// 0, 1 and 2: WJet    Index
+	// 3, 4 and 5: TopJet  Index
+	std::vector<int> WTopDiJetIndex = WTopTagger  (Dijet_Var);
+	
+	//----------------------------------------
+	// Histograms only filled for ttbar samples
+	std::vector<int> WIndex;    
+	std::vector<int> TopIndex;    
+	std::vector<int> AddIndex;    
+	
+	for (unsigned int ij = 0; ij < NJets; ij ++){
+	  ComJet jetcand = Jets[ij]; 
+	  if      (jetcand.Mom == 6){
+	    hTJetPosition->Fill(ij);
+	    TopIndex.push_back(ij);
+	  }      
+	  else if (jetcand.Mom == 24){
+	    hWJetPosition->Fill(ij);
+	    WIndex.push_back(ij);
+	  }      
+	  else{
+	    hOJetPosition->Fill(ij);      
+	    AddIndex.push_back(ij);
+	  }    
+	} // for(ij)
+	
+	//----------------------------------------
+	// Re-arrange Jets using GEN info
+	// GEN Arrange
+	// std::vector<ComJet> arrJets;
+	// arrJets.resize(Jets.size());
+	
+	// arrJets.at(0) = Jets.at(TopIndex[0]);
+	// arrJets.at(1) = Jets.at(TopIndex[1]);
+	// arrJets.at(2) = Jets.at(AddIndex[0]);
+	// arrJets.at(3) = Jets.at(AddIndex[1]);
+	// arrJets.at(4) = Jets.at(WIndex[0]);
+	// arrJets.at(5) = Jets.at(WIndex[1]);
+	
+	// Jets.clear();
+	// Jets = arrJets;
+	
+	// Filled ONLY if the event has the 3 components: (2W, 2T 2Add)
+	// h2DWJetPosition->Fill(WIndex[0], WTopDiJetIndex[0]);
+	// h2DWJetPosition->Fill(WIndex[1], WTopDiJetIndex[1]);
+	
+	// h2DTJetPosition->Fill(TopIndex[0], WTopDiJetIndex[3]);
+	// h2DTJetPosition->Fill(TopIndex[1], WTopDiJetIndex[4]);
+	
+	// h2DOJetPositionMVA->Fill(AddIndex[0], AddDiJetMVAIndex[0]);
+	// h2DOJetPositionMVA->Fill(AddIndex[1], AddDiJetMVAIndex[1]);
+	
+      }// if (ttbar)
+      
+    } //if (6jets && 1btag)    
+    
+    
+    /*******************************************
+                Number of GENJets
+    *******************************************/    
     int NGenJets = 0;
     if (_ttbar_cat){
       for(int igenjet=0; igenjet < GenJet_pT->size(); igenjet++){
@@ -810,7 +1043,7 @@ int main(int argc, const char* argv[]){
       
       // Easiest adaptation: Create Lep_SF in the same way the Lep_SF vector
       SF_ID_ISO_Tr = (*Lep_SF);
-
+      
       if(_syst && syst_varname.Contains("LepSF")){
 	float SFSystUnc = SF_ID_ISO_Tr[0]*0.015;
 	if(syst_varname.Contains("Up"))   PUWeight = PUWeight * (SF_ID_ISO_Tr[1] + SFSystUnc) ;
@@ -840,12 +1073,12 @@ int main(int argc, const char* argv[]){
     /***************************
             Selection
     ***************************/
-
+    
     int                            cut = 0; // Single Lepton (from Tree)
     if(NJets > 5)                  cut = 1; // + 6 Jets 
     if(NJets > 5 && NBtagJets > 1) cut = 2; // + 2 b-tag
     if(NJets > 5 && NBtagJets > 2) cut = 3; // + 3 b-tag
-
+    
     /***************************
         ttbar Categorization
      ***************************/
@@ -905,7 +1138,7 @@ int main(int argc, const char* argv[]){
     if (fname.Contains("DataSingleEG") && Channel==0)  cut = -1;
     if (fname.Contains("QCD_MuEnr")    && Channel==1)  cut = -1;
     if (fname.Contains("QCD_EGEnr")    && Channel==0)  cut = -1;
-
+    
     /***************************
           Loop over cuts
     ***************************/
@@ -971,6 +1204,8 @@ int main(int argc, const char* argv[]){
       hNBtagJets[icut][Channel]->Fill(NBtagJets,PUWeight);
       // Dijet InvMass
       hInvMassjj[icut][Channel]->Fill(Mjj, PUWeight);
+      // Dijet Max MVA (BDT) Response
+      hMaxMVAjj[icut][Channel]->Fill(MaxMVA, PUWeight);
       // Global btag SF
       h2DSFbtag_Global[icut][Channel]->Fill((*Jet_SF_CSV)[btagUnc::CENTRAL], btagUnc_val, PUWeight);
       hSFbtag_Global[icut][Channel]->Fill((*Jet_SF_CSV)[btagUnc::CENTRAL], PUWeight);
@@ -983,14 +1218,15 @@ int main(int argc, const char* argv[]){
       if(Jets.size() > 5)  h2DCSV_25Jet[icut][Channel]->Fill(Jets[2].CSV, Jets[5].CSV, PUWeight);
       if(Jets.size() > 5)  h2DCSV_35Jet[icut][Channel]->Fill(Jets[3].CSV, Jets[5].CSV, PUWeight);
 
-      int jbmax = std::min(6,NJets);
       for(int ijet=0; ijet < Jets.size(); ijet++){
 
 	ComJet jet = Jets[ijet];
 	
 	if (ijet < 6){	  
-	  hCSV  [ijet][icut][Channel]->Fill(jet.CSV,  PUWeight);
 	  hJetPt[ijet][icut][Channel]->Fill(jet.Pt(), PUWeight);
+	  hCSV  [ijet][icut][Channel]->Fill(jet.CSV,  PUWeight);
+	  hCvsL [ijet][icut][Channel]->Fill(jet.CvsL, PUWeight);
+	  hCvsB [ijet][icut][Channel]->Fill(jet.CvsB, PUWeight);
 	}
 
 	if(jet.Flavour == 5){
@@ -1007,6 +1243,7 @@ int main(int argc, const char* argv[]){
 	}
 	
 	//Dijet Invariant Mass 
+	int jbmax = std::min(6,NJets);
 	for(int jjet=ijet+1; jjet < jbmax; jjet++){
 	  ComJet jet_ = Jets[jjet];
 	  float DijetInvMass = (jet+jet_).M(); 
@@ -1042,29 +1279,42 @@ int main(int argc, const char* argv[]){
   sw.Stop();
   std::cout << "==================================================] 100% " << std::endl;
   std::cout << "--- End of event loop: "; sw.Print();
-  
+  std::cout << std::endl;
 
   //Acceptance-Efficiency
-for(int nc = 0; nc < 4; nc++){
-  std::cout << "-----------------------------" << std::endl;
-  std::cout << "-- Acceptace: Number of RAW-mu+Jets events:" << std::endl;
-  std::cout << namecut[nc] << ": " << AccEvent[nc][0] << std::endl;
-  std::cout << "-- Efficiency: Number of Weigthed-mu+Jets events:" << std::endl;
-  std::cout << namecut[nc] << ": " << EffEvent[nc][0] << " +/- " << sqrt(AccEvent[nc][0])*EffEvent[nc][0]/AccEvent[nc][0] << std::endl;
-  std::cout << std::endl;
-  std::cout << "-- Acceptace: Number of RAW-e+Jets events:" << std::endl;
-  std::cout << namecut[nc] << ": " << AccEvent[nc][1] << std::endl;
-  std::cout << "-- Efficiency: Number of Weigthed-e+Jets events: " << std::endl;
-  std::cout << namecut[nc] << ": " << EffEvent[nc][1] << " +/- " << sqrt(AccEvent[nc][1])*EffEvent[nc][1]/AccEvent[nc][1] << std::endl;
-  std::cout << "-----------------------------" << std::endl;
- }
-
-  //Output Dir
-  TString dirname="TopResults";   
-  // make a dir if it does not exist!!
-  struct stat st;
-  if(stat(dirname,&st) != 0) system("mkdir " + dirname);
+  TH1F *Yields;
+  Yields = new TH1F("Yields", "Yields",12,0,12);
+  int nbin = 1;
   
+  for(int nc = 0; nc < 4; nc++){
+    AccEvent[nc][2] = AccEvent[nc][0] + AccEvent[nc][1];
+    EffEvent[nc][2] = EffEvent[nc][0] + EffEvent[nc][1];
+
+    for(int nch = 0; nch < 3; nch++){      
+      
+      float EffError;
+      if (AccEvent[nc][nch] != 0.0) EffError = sqrt(AccEvent[nc][nch])*EffEvent[nc][nch]/AccEvent[nc][nch];
+      else EffError = 0.0;
+
+      Yields->GetXaxis()->SetBinLabel(nbin, namecut[nc] + " " + namech[nch]);
+      Yields->SetBinContent(nbin, EffEvent[nc][nch]);
+      Yields->SetBinError  (nbin, EffError);
+      nbin++;
+      
+      std::cout << "-- Acceptace  " << namecut[nc] << " " << namech[nch] << ": " << AccEvent[nc][nch] << std::endl;
+      std::cout << "-- Efficiency " << namecut[nc] << " " << namech[nch] << ": " << EffEvent[nc][nch] << " +/- " << EffError << std::endl;
+      std::cout << std::endl;
+    }
+    std::cout << "-----------------------------" << std::endl;
+  }
+  
+
+  TreeFile->cd();    
+
+  TMVASignal->Write();
+  TMVABkg   ->Write();
+
+  TreeFile->Close();    
 
   // Sample name identification
   TString samplename="";
@@ -1078,140 +1328,15 @@ for(int nc = 0; nc < 4; nc++){
 	  fname[i-1]=='_') matchsamplename=true;
     }
     if (matchsamplename) samplename.Append(fname[i]);
-  }
-
-  
-  if(!_syst){
-    // Yields
-    // make a dir if it does not exist!!
-    TString diryieldsname = dirname + "/Yields_" + hname;
-    struct stat st;
-    if(stat(diryieldsname,&st) != 0) system("mkdir " + diryieldsname);
-    
-    TString Yieldfile = diryieldsname + "/" + samplename.Data() + ".h";
-    //Yieldfile += ".h";
-    // Option a = append: Open file for output at the end of a file.
-    // Option w = write: Create an empty file for output operations. 
-    FILE* fyields = fopen(Yieldfile, "w"); 
-
-    fprintf(fyields,"\n///////////////////////////////////////////////////////////////////////////////// \n\n");
-    fprintf(fyields,"// %s Sample on %s \n", (fname + ".root").Data() , currentDateTime().Data());
-    fprintf(fyields,"// %s version \n", hname.Data());
-    fprintf(fyields," float  %s[16][3][2][4];//[systematic][variation][channel][Cut] \n",      samplename.Data());
-    fprintf(fyields," float  err_%s[16][3][3][4]; //[systematic][variation][channel][Cut] \n", samplename.Data());
-    fprintf(fyields,"// Systematic: [0]=Trigger [1]=ID-ISO [2]=LES \n");
-    fprintf(fyields,"// Systematic: [3]=JES [4]=JER [5]=b-tag [6]=PileUp \n");
-    fprintf(fyields,"// Systematic: [7]=Scale [8]=Matching [9]=pTreweight [9]=PDF \n");
-    fprintf(fyields,"// Systematic: [10]=DY-DD [11]=Non-W/Z [15]=Nom \n");
-    fprintf(fyields,"// Variation: [0]=Up [1]=Down [2]=Nom \n");
-    fprintf(fyields,"// Channel: [0]=mumu [1]=ee [2]=mue \n");
-    fprintf(fyields,"// Cut: [0]=Dielpton [1]=Jets+Zveto [2]=MET [3]=btag \n");
-
-    for(int ch=0;ch<2;ch++){
-      for(int cut=0;cut<4;cut++){
-      fprintf(fyields,"%s[15][2][%i][%i] = %.3f ; \n", samplename.Data(), ch, cut, EffEvent[cut][ch]);
-      if(AccEvent[cut][ch]!=0.0) fprintf(fyields,"err_%s[15][2][%i][%i] = %.3f ; \n", samplename.Data(), ch, cut, sqrt(AccEvent[cut][ch])*EffEvent[cut][ch]/AccEvent[cut][ch]);
-      else fprintf(fyields,"err_%s[15][2][%i][%i] = 0.0 ; \n", samplename.Data(), ch, cut);
-      }
-    }
-    fclose(fyields);
-    
-    std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
-    std::cout << "Yields saved into " << Yieldfile << " file" << std::endl;
-    std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;    
-  } 
-  
-  if (_syst){    
-
-    // Name change
-    TString processname = samplename;
-    TString systname    = "";
-    bool matchsystname  = false; 
-    
-    for(int i=0;i<samplename.Sizeof();i++){
-      if (i>3){
-	if (samplename[i-4]=='S' && 
-	    samplename[i-3]=='Y' && 
-	    samplename[i-2]=='S' && 
-	    samplename[i-1]=='_'){
-	  matchsystname = true;
-	}
-      }
-      if (matchsystname) systname.Append(samplename[i]);
-    }
-    
-    processname.ReplaceAll(("_SYS_" + systname).Data(), "");  
-    
-    int variation  = -999;
-    int systsource = -999;
-    
-    if     (systname.Contains("Up"))   variation = 0;
-    else if(systname.Contains("Down")) variation = 1;
-    else if(systname.Contains("Nom"))  variation = 2;
-
-    if(systname.Contains("Trigger"))         systsource = 0;
-    else if(systname.Contains("IDISO"))      systsource = 1;
-    else if(systname.Contains("LES"))        systsource = 2;
-    else if(systname.Contains("JES"))        systsource = 3;
-    else if(systname.Contains("JER"))        systsource = 4;
-    else if(systname.Contains("PileUp"))     systsource = 6;
-    else if(systname.Contains("Scale"))      systsource = 7;
-    else if(systname.Contains("Matching"))   systsource = 8;
-    else if(systname.Contains("pTReweight")) systsource = 9;
-    else if(systname.Contains("Powheg"))     systsource = 10;
-    else if(systname.Contains("btagjes"))    systsource = 11;
-    else if(systname.Contains("btaglf"))     systsource = 12;
-    else if(systname.Contains("btaghf"))     systsource = 13;
-    else if(systname.Contains("btaghfsI"))   systsource = 14;
-    else if(systname.Contains("btaghfsII"))  systsource = 16;
-    else if(systname.Contains("btaglfsI"))   systsource = 17;
-    else if(systname.Contains("btaglfsII"))  systsource = 18;
-    else if(systname.Contains("btagcfI"))    systsource = 19;
-    else if(systname.Contains("btagcfII"))   systsource = 20;
-
-    // Systematic Uncertainty Estimations
-    // make a dir if it does not exist!!
-    TString dirSysyieldsname = dirname + "/SysYields_" + hname;
-    struct stat st;
-    if(stat(dirSysyieldsname,&st) != 0) system("mkdir " + dirSysyieldsname);
-    
-    TString Syst_Yieldfile = dirSysyieldsname + "/" + samplename.Data() + ".h";
-    FILE* fSys = fopen(Syst_Yieldfile, "w");        
-    
-    fprintf(fSys,"\n///////////////////////////////////////////////////////////////////////////////// \n\n");
-    fprintf(fSys,"// %s Sample on %s \n", (fname + ".root").Data(), currentDateTime().Data());
-    fprintf(fSys,"// %s version \n", hname.Data());
-    fprintf(fSys,"// float  %s[16][3][3][4];//[systematic][variation][channel][Cut] \n", processname.Data());
-    fprintf(fSys,"// float  err_%s[16][3][3][4]; //[systematic][variation][channel][Cut] \n", processname.Data());
-    fprintf(fSys,"// Systematic: [0]=Trigger [1]=ID-ISO [2]=LES \n");
-    fprintf(fSys,"// Systematic: [3]=JES [4]=JER [5]=b-tag [6]=PileUp \n");
-    fprintf(fSys,"// Systematic: [7]=Scale [8]=Matching [9]=pTreweight [9]=PDF \n");
-    fprintf(fSys,"// Systematic: [10]=DY-DD [11]=Non-W/Z [15]=Nom \n");
-    fprintf(fSys,"// Variation: [0]=Up [1]=Down [2]=Nom \n");
-    fprintf(fSys,"// Channel: [0]=mumu [1]=ee [2]=mue \n");
-    fprintf(fSys,"// Cut: [0]=Dielpton [1]=Jets+Zveto [2]=MET [3]=btag \n");
-
-    for(int ch=0;ch<3;ch++){
-      for(int cut=0;cut<4;cut++){
-	fprintf(fSys,"%s     [%i][%i][%i][%i] = %.3f ; \n", processname.Data(), systsource, variation, ch, cut, EffEvent[cut][ch]);
-	if(AccEvent[cut][ch]!=0.0) fprintf(fSys,"err_%s [%i][%i][%i][%i] = %.3f ; \n", processname.Data(), systsource, variation, ch, cut, sqrt(AccEvent[cut][ch])*EffEvent[cut][ch]/AccEvent[cut][ch]);
-	else fprintf(fSys,"err_%s [%i][%i][%i][%i] = 0.0 ; \n", processname.Data(), systsource, variation, ch, cut);
-      }
-    }
-
-    fclose(fSys);
-    
-    std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
-    std::cout << "Yields saved for Syst. estimation into " << Syst_Yieldfile << " file" << std::endl;
-    std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;    
-    
-  }
-  
+  }  
   
   // --- Write histograms
-  
   TString outfname=dirname + "/hSF-" + hname + "_" + fname + ".root";
   TFile *target  = new TFile(outfname,"RECREATE" );  
+  
+  target->cd();
+  
+  Yields->Write();
 
   for(int j=0; j<4; j++){
     for(int i=0; i<2; i++){
@@ -1243,8 +1368,10 @@ for(int nc = 0; nc < 4; nc++){
       hSFbtag_Global_var[j][i]->Write();
 
       for(int ij=0; ij<6; ij++){
-	hCSV[ij][j][i]->Write();
 	hJetPt[ij][j][i]->Write();
+	hCSV  [ij][j][i]->Write();
+	hCvsL [ij][j][i]->Write();
+	hCvsB [ij][j][i]->Write();
       }
 
       for(int ja=0; ja<5; ja++){
@@ -1253,6 +1380,7 @@ for(int nc = 0; nc < 4; nc++){
 	}
       }      
       hInvMassjj[j][i]->Write();
+      hMaxMVAjj [j][i]->Write();
 
       hSFpT[j][i]->Write();
       hSFpTError[j][i]->Write();
@@ -1273,9 +1401,21 @@ for(int nc = 0; nc < 4; nc++){
     }//for(i)
 
   }//for(j)
-  
+
+  hTJetPosition->Write();
+  hWJetPosition->Write();
+  hOJetPosition->Write();
+
+  h2DWJetPosition->Write();
+  h2DTJetPosition->Write();
+  h2DOJetPositionMVA->Write();
+    
+  target->Close();
+
   std::cout << "File saved as " << outfname << std::endl;
 
+  delete classReader;
+  delete Tvinput;
 }
 
 // Get current date/time, format is YYYY-MM-DD.HH:mm:ss
@@ -1358,6 +1498,153 @@ float DiJetMassCorrection(std::vector<ComJet>  &Jets, bool ReArrange = false){
 
   return Mjj;
 }
+
+
+std::vector<std::vector<float>> DiJetVariableEstimation(std::vector<ComJet>  &Jets, float DRAddJets, bool MVA, IClassifierReader *classReader){
+
+  std::vector<std::vector<float>> DijetOutput;
+  std::vector<float> Dijet_Signal; 
+  std::vector<float> Dijet_Index0; 
+  std::vector<float> Dijet_Index1; 
+  std::vector<float> Dijet_MVARes; 
+  std::vector<float> Dijet_M; 
+  std::vector<float> Dijet_pT; 
+  std::vector<float> Dijet_DR; 
+  std::vector<float> Dijet_DPhi; 
+  std::vector<float> Dijet_CvsL1; 
+  std::vector<float> Dijet_CvsL2; 
+  std::vector<float> Dijet_CvsLjj; 
+  std::vector<float> Dijet_CvsB1; 
+  std::vector<float> Dijet_CvsB2; 
+  std::vector<float> Dijet_CvsBjj; 
+  std::vector<float> Dijet_CSV1; 
+  std::vector<float> Dijet_CSV2; 
+  
+  float MinDelta_DR = 999.;
+
+  int AddDijetIndex     =  0;
+  int bestAddDiJetIndex = -1;
+  int WDiJetIndex       = -1;
+  int TopDiJetIndex     = -1;
+
+  for(int ijet=0; ijet < Jets.size(); ijet++){
+    ComJet jet_i = Jets[ijet];
+    
+    for(int jjet=ijet+1; jjet < Jets.size(); jjet++){
+      ComJet jet_j = Jets[jjet];
+      
+      float vMjj    = (jet_i+jet_j).M();
+      float vpTjj   = (jet_i+jet_j).Pt();
+      float vDRjj   = jet_i.DeltaR(jet_j);
+      float vDPhijj = jet_i.DeltaPhi(jet_j);
+      float vCvsL1  = jet_i.CvsL;
+      float vCvsL2  = jet_j.CvsL;
+      float vCvsLjj = jet_i.CvsL + jet_j.CvsL;
+      float vCvsB1  = jet_i.CvsB;
+      float vCvsB2  = jet_j.CvsB;
+      float vCvsBjj = jet_i.CvsB + jet_j.CvsB;
+      float vCSV1   = jet_i.CSV;
+      float vCSV2   = jet_j.CSV;
+
+      // Kinematic Variables      
+      Dijet_M   .push_back(vMjj); 
+      Dijet_pT  .push_back(vpTjj); 
+      Dijet_DR  .push_back(vDRjj); 
+      Dijet_DPhi.push_back(vDPhijj); 
+      Dijet_CvsL1.push_back(vCvsL1); 
+      Dijet_CvsL2.push_back(vCvsL2); 
+      Dijet_CvsLjj.push_back(vCvsLjj); 
+      Dijet_CvsB1.push_back(vCvsB1); 
+      Dijet_CvsB2.push_back(vCvsB2); 
+      Dijet_CvsBjj.push_back(vCvsBjj); 
+      Dijet_CSV1.push_back(vCSV1); 
+      Dijet_CSV2.push_back(vCSV2); 
+      // Signal/Bkg tagger (Only for trainning)
+      Dijet_Signal.push_back(0.0);
+      // Jet Index
+      Dijet_Index0.push_back(ijet);
+      Dijet_Index1.push_back(jjet);
+
+      // Is it a signal (additional) pair?
+      if (jet_i.Mom != 6  && jet_j.Mom != 6 && 
+	  jet_i.Mom != 24 && jet_j.Mom != 24 ) {
+	
+	float Delta_DR = std::abs(jet_i.DeltaR(jet_j) - DRAddJets);
+
+	if(Delta_DR < MinDelta_DR){
+	  MinDelta_DR = Delta_DR;	  
+	  bestAddDiJetIndex = AddDijetIndex;	  
+	} // if (Delta_DR)
+      
+      } // if(Mom)
+      
+      // Is it a W pair?
+      if (jet_i.Mom == 24 && jet_j.Mom == 24 ) WDiJetIndex = AddDijetIndex;
+      // Is it a Top pair?
+      if (jet_i.Mom == 6 && jet_j.Mom == 6 ) TopDiJetIndex = AddDijetIndex;
+      
+      // TMVA Response    
+      float vMVARes;
+      if (MVA){
+	std::vector<double> inputVariableValues;
+	inputVariableValues.push_back(vMjj);
+	inputVariableValues.push_back(vpTjj);
+	inputVariableValues.push_back(vDRjj);
+	inputVariableValues.push_back(vDPhijj);
+	inputVariableValues.push_back(vCvsL1);
+	inputVariableValues.push_back(vCvsL2);
+	inputVariableValues.push_back(vCvsB1);
+	inputVariableValues.push_back(vCvsB2);
+	inputVariableValues.push_back(vCSV1);
+	inputVariableValues.push_back(vCSV2);
+
+	vMVARes = classReader->GetMvaValue(inputVariableValues);
+      }
+      else  vMVARes = 0.0;
+      Dijet_MVARes.push_back(vMVARes);
+
+      // Global DiJet Index
+      AddDijetIndex ++;      
+
+    }// for(jjets)    
+  }// for(ijet)
+  
+  // Signal/Bkg tagger (Only for trainning)
+  if(MinDelta_DR < 999.) Dijet_Signal.at(bestAddDiJetIndex) = 1.0;
+  if(WDiJetIndex > -1)   Dijet_Signal.at(WDiJetIndex)       = 2.0;
+  if(TopDiJetIndex > -1) Dijet_Signal.at(TopDiJetIndex)     = 3.0;
+  DijetOutput.push_back(Dijet_Signal);
+  // Jet Index
+  DijetOutput.push_back(Dijet_Index0);
+  DijetOutput.push_back(Dijet_Index1);
+  // MVA Response
+  DijetOutput.push_back(Dijet_MVARes);
+  // Kinematic Variables
+  DijetOutput.push_back(Dijet_M);
+  DijetOutput.push_back(Dijet_pT);
+  DijetOutput.push_back(Dijet_DR);
+  DijetOutput.push_back(Dijet_DPhi);
+  DijetOutput.push_back(Dijet_CvsL1);
+  DijetOutput.push_back(Dijet_CvsL2);
+  DijetOutput.push_back(Dijet_CvsLjj);
+  DijetOutput.push_back(Dijet_CvsB1);
+  DijetOutput.push_back(Dijet_CvsB2);
+  DijetOutput.push_back(Dijet_CvsBjj);
+  DijetOutput.push_back(Dijet_CSV1);
+  DijetOutput.push_back(Dijet_CSV2);
+
+  return DijetOutput;
+  // 0: Dijet Tagger (To produce the training tree) 
+  // 1: Jet0 Index 
+  // 2: Jet1 Index 
+  // 3: MVA Response 
+  // 4: Dijet_M;
+  // 5: Dijet_pT;
+  // 6: Dijet_DPhi;
+  // 7: Dijet_DR;
+  
+}
+
   
 #endif
 

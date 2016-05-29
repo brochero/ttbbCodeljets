@@ -2,8 +2,6 @@
 
 void roo2Dfit(TString SystVar = "", TString nModel = "RttbCon"){
 
-
-  gROOT->ProcessLine(".L tdrStyle.C");
   setTDRStyle();
 
   gSystem->Load("libRooFit") ;
@@ -15,14 +13,21 @@ void roo2Dfit(TString SystVar = "", TString nModel = "RttbCon"){
 
   InFile[data] = LoadSample("_DataSingleLep.root");
 
-  InFile[ttbb]   = LoadSample("_ttbar_PowhegPythiattbb"   + SystVar + ".root");
-  InFile[ttb]    = LoadSample("_ttbar_PowhegPythiattb"    + SystVar + ".root");
-  InFile[ttcc]   = LoadSample("_ttbar_PowhegPythiattcc"   + SystVar + ".root");
-  InFile[ttLF]   = LoadSample("_ttbar_PowhegPythiattLF"   + SystVar + ".root"); // Includes ttc
+  // InFile[ttbb]   = LoadSample("_ttbar_PowhegPythiattbb"   + SystVar + ".root");
+  // InFile[ttb]    = LoadSample("_ttbar_PowhegPythiattb"    + SystVar + ".root");
+  // InFile[ttcc]   = LoadSample("_ttbar_PowhegPythiattcc"   + SystVar + ".root");
+  // InFile[ttLF]   = LoadSample("_ttbar_PowhegPythiattLF"   + SystVar + ".root"); // Includes ttc
+  // InFile[ttccLF] = LoadSample("_ttbar_PowhegPythiattccLF" + SystVar + ".root");
+
+  InFile[ttbb]   = LoadSample("_ttbar_PowhegPythiattbb" + SystVar + ".root");
+  InFile[ttb]    = LoadSample("_ttbar_PowhegPythiattb"  + SystVar + ".root");
+  InFile[ttcc]   = LoadSample("_ttbar_PowhegPythiattcc" + SystVar + ".root");
+  InFile[ttLF]   = LoadSample("_ttbar_PowhegPythiattLF" + SystVar + ".root"); // Includes ttc
   InFile[ttccLF] = LoadSample("_ttbar_PowhegPythiattccLF" + SystVar + ".root");
 
   InFile[WJets]     = LoadSample("_WJets_MCatNLO.root");
   InFile[ZJets]     = LoadSample("_ZJets_MCatNLO.root");
+  //InFile[SingleTop] = LoadSample("_SingleTop" + SystVar + ".root");
   InFile[SingleTop] = LoadSample("_SingleTop" + SystVar + ".root");
   InFile[VV]        = LoadSample("_VV.root");
   InFile[QCD]       = LoadSample("_QCD.root");
@@ -91,6 +96,7 @@ void roo2Dfit(TString SystVar = "", TString nModel = "RttbCon"){
     // Signal: Fitted ratios
     RooRealVar  *fit_ratio_ttbb   = new RooRealVar("fit_ratio_ttbb",   "FITTED ratio ttbb/ttjj",   ratio[ttbb],   0.0, 0.1); 
     RooRealVar  *fit_ratio_ttb    = new RooRealVar("fit_ratio_ttb",    "FITTED ratio ttb/ttjj",    ratio[ttb],    0.0, 1.0); 
+    RooRealVar  *fit_ratio_ttcc   = new RooRealVar("fit_ratio_ttcc",   "FITTED ratio ttcc/ttjj",   ratio[ttcc],   0.0, 1.0); 
     RooRealVar  *fit_ratio_ttccLF = new RooRealVar("fit_ratio_ttccLF", "FITTED ratio ttccLF/ttjj", ratio[ttccLF], 0.0, 1.0); 
     RooRealVar  *fit_ratio_ttjj   = new RooRealVar("fit_ratio_ttjj",   "FITTED ratio ttjj/Total",  0.8,           0.0, 1.0); 
 
@@ -98,7 +104,7 @@ void roo2Dfit(TString SystVar = "", TString nModel = "RttbCon"){
     RooFormulaVar *fit_ratio_ttbb_con = new RooFormulaVar("fit_ratio_ttbb_con", "FITTED ratio ttbb/ttjj contrained", "fit_ratio_ttbb*(RECO_ratio_ttb/RECO_ratio_ttbb)", RooArgList(*fit_ratio_ttbb, *RECO_ratio_ttbb, *RECO_ratio_ttb));
 
     // Normalization Constant
-    RooRealVar *k = new RooRealVar("k", "Normalization factor", 1.0, 0.50, 1.50);
+    RooRealVar *k = new RooRealVar("k", "Normalization factor", 1.0, 0.50, 3.50);
 
     // Background
     RooRealVar  *fit_ratio_Bkgtt    = new RooRealVar("fit_ratio_Bkgtt",    "FITTED ratio bkgtt/FullBkg",    0.4, 0.0, 1.0); 
@@ -136,6 +142,8 @@ void roo2Dfit(TString SystVar = "", TString nModel = "RttbCon"){
 			    *arg_CSV, InFile[ttcc].hist2D[ch]);
     RooDataHist *ttb_his    = new RooDataHist("ttb_his",    "ttb Histogram",    
 			    *arg_CSV, InFile[ttb].hist2D[ch]);
+    RooDataHist *ttLF_his   = new RooDataHist("ttLF_his", "ttLF Histogram", 
+			    *arg_CSV, InFile[ttLF].hist2D[ch]);
     RooDataHist *ttccLF_his = new RooDataHist("ttccLF_his", "ttccLF Histogram", 
 			    *arg_CSV, InFile[ttccLF].hist2D[ch]);
 
@@ -145,11 +153,15 @@ void roo2Dfit(TString SystVar = "", TString nModel = "RttbCon"){
 			      *arg_CSV, InFile[BkgOther].hist2D[ch]);
     RooDataHist *BkgFull_his  = new RooDataHist("BkgFull_his",  "BkgFull Histogram",    
 			      *arg_CSV, InFile[BkgFull].hist2D[ch]);
+
+    RooDataHist *ttbbC_his   = new RooDataHist("ttbbC_his",   "ttbb Histogram",   
+					       *arg_CSV, InFile[ttbb].hist2D[ch]);
        
     //pdf 
     RooHistPdf *ttbb_hispdf   = new RooHistPdf("ttbb_hispdf",   "PDF for ttbb",     RooArgSet(*arg_CSV), *ttbb_his);
     RooHistPdf *ttcc_hispdf   = new RooHistPdf("ttcc_hispdf",   "PDF for ttcc",     RooArgSet(*arg_CSV), *ttcc_his);
     RooHistPdf *ttb_hispdf    = new RooHistPdf("ttb_hispdf",    "PDF for ttb",      RooArgSet(*arg_CSV), *ttb_his);
+    RooHistPdf *ttLF_hispdf   = new RooHistPdf("ttLF_hispdf",   "PDF for ttccLF",   RooArgSet(*arg_CSV), *ttLF_his);
     RooHistPdf *ttccLF_hispdf = new RooHistPdf("ttccLF_hispdf", "PDF for ttccLF",   RooArgSet(*arg_CSV), *ttccLF_his);
 
     RooHistPdf *Bkgtt_hispdf    = new RooHistPdf("Bkgtt_hispdf",    "PDF for ttbar Bkg", RooArgSet(*arg_CSV), *Bkgtt_his);
@@ -161,52 +173,70 @@ void roo2Dfit(TString SystVar = "", TString nModel = "RttbCon"){
     /////////////////
     RooAddPdf *model_ttjj;
     
-    if (nModel == "RttbCon")  model_ttjj = new RooAddPdf("model_ttjj", "Model For Signal (ttjj)", 
-							 RooArgList(*ttbb_hispdf, *ttb_hispdf, *ttccLF_hispdf), 
-							 RooArgList(*fit_ratio_ttbb, *fit_ratio_ttbb_con));
-    if (nModel == "RttbFree") model_ttjj = new RooAddPdf("model_ttjj", "Model For Signal (ttjj)", 
-    							 RooArgList(*ttbb_hispdf, *ttb_hispdf, *ttccLF_hispdf), 
-    							 RooArgList(*fit_ratio_ttbb, *fit_ratio_ttb));
+    if (nModel == "RttbCon")   model_ttjj = new RooAddPdf("model_ttjj", "Model For Signal (ttjj)", 
+							  RooArgList(*ttbb_hispdf, *ttb_hispdf, *ttccLF_hispdf), 
+							  RooArgList(*fit_ratio_ttbb, *fit_ratio_ttbb_con));
+    if (nModel == "RttbFree")  model_ttjj = new RooAddPdf("model_ttjj", "Model For Signal (ttjj)", 
+							  RooArgList(*ttbb_hispdf, *ttb_hispdf, *ttccLF_hispdf), 
+							  RooArgList(*fit_ratio_ttbb, *fit_ratio_ttb));
+    if (nModel == "RttccFree") model_ttjj = new RooAddPdf("model_ttjj", "Model For Signal (ttjj)", 
+							  RooArgList(*ttbb_hispdf, *ttb_hispdf, *ttcc_hispdf, *ttLF_hispdf), 
+							  RooArgList(*fit_ratio_ttbb, *fit_ratio_ttbb_con, *fit_ratio_ttcc));
     
     RooAddPdf *model = new RooAddPdf("model", "Model For Signal + Background", 
 				     RooArgList(*model_ttjj, *Bkgtt_hispdf, *BkgOther_hispdf), 
 				     RooArgList(*kn_ttjj_var, *n_Bkgtt_var, *n_BkgOther_var)); 
-    
-    model->fitTo(*data_his);
     
     
     // Plot I and II
     RooPlot *CSV2Tot_f = CSV2->frame();
     RooPlot *CSV3Tot_f = CSV3->frame();
     
-    ttbb_his->plotOn(CSV2Tot_f,LineColor(0),MarkerSize(0)); //Scale PDF to the HISTOS
-    model->plotOn (CSV2Tot_f, Components(RooArgSet(*ttbb_hispdf,  *ttb_hispdf, *ttccLF_hispdf)), LineColor(colors[ttjj]), RooFit::Name("CSV2Tot_f_ttjj"));
+    ttbbC_his->plotOn(CSV2Tot_f,LineColor(0),MarkerSize(0)); //Scale PDF to the HISTOS
+    ttbbC_his->plotOn(CSV3Tot_f,LineColor(0),MarkerSize(0)); //Scale PDF to the HISTOS
+    if (nModel == "RttccFree"){
+      model->plotOn (CSV2Tot_f, Components(RooArgSet(*ttbb_hispdf, *ttb_hispdf, *ttcc_hispdf, *ttLF_hispdf)), LineColor(colors[ttjj]), RooFit::Name("CSV2Tot_f_ttjj"));
+      model->plotOn (CSV3Tot_f, Components(RooArgSet(*ttbb_hispdf, *ttb_hispdf, *ttcc_hispdf, *ttLF_hispdf)), LineColor(colors[ttjj]));
+    }
+    else{
+      model->plotOn (CSV2Tot_f, Components(RooArgSet(*ttbb_hispdf, *ttb_hispdf, *ttccLF_hispdf)), LineColor(colors[ttjj]), RooFit::Name("CSV2Tot_f_ttjj"));
+      model->plotOn (CSV3Tot_f, Components(RooArgSet(*ttbb_hispdf, *ttb_hispdf, *ttccLF_hispdf)), LineColor(colors[ttjj]));
+    }
     model->plotOn (CSV2Tot_f, Components(RooArgSet(*Bkgtt_hispdf, *BkgOther_hispdf)), LineColor(colors[BkgFull]), LineStyle(kDashed), RooFit::Name("CSV2Tot_f_BkgFull"));
-
-    ttbb_his->plotOn(CSV3Tot_f,LineColor(0),MarkerSize(0)); //Scale PDF to the HISTOS
-    model->plotOn(CSV3Tot_f, Components(RooArgSet(*ttbb_hispdf, *ttb_hispdf, *ttccLF_hispdf)), LineColor(colors[ttjj]));
-    model->plotOn(CSV3Tot_f, Components(RooArgSet(*Bkgtt_hispdf, *BkgOther_hispdf)), LineColor(colors[BkgFull]), LineStyle(kDashed));
+    model->plotOn (CSV3Tot_f, Components(RooArgSet(*Bkgtt_hispdf, *BkgOther_hispdf)), LineColor(colors[BkgFull]), LineStyle(kDashed));
     
     // Plot III and IV
     RooPlot *CSV2_f = CSV2->frame();
     RooPlot *CSV3_f = CSV3->frame();
 
     ttbb_his->plotOn(CSV2_f,LineColor(0),MarkerSize(0)); //Scale PDF to the HISTOS
+    ttbb_his->plotOn(CSV3_f,LineColor(0),MarkerSize(0)); //Scale PDF to the HISTOS
+
     model->plotOn(CSV2_f, Components(RooArgSet(*ttbb_hispdf)),   LineColor(colors[ttbb]),   RooFit::Name("CSV2_f_ttbb"));
     model->plotOn(CSV2_f, Components(RooArgSet(*ttb_hispdf)),    LineColor(colors[ttb]),    RooFit::Name("CSV2_f_ttb"));
-    model->plotOn(CSV2_f, Components(RooArgSet(*ttccLF_hispdf)), LineColor(colors[ttccLF]), RooFit::Name("CSV2_f_ttccLF"));
-
-    ttbb_his->plotOn(CSV3_f,LineColor(0),MarkerSize(0)); //Scale PDF to the HISTOS
     model->plotOn(CSV3_f, Components(RooArgSet(*ttbb_hispdf)),   LineColor(colors[ttbb]));
     model->plotOn(CSV3_f, Components(RooArgSet(*ttb_hispdf)),    LineColor(colors[ttb]));
-    model->plotOn(CSV3_f, Components(RooArgSet(*ttccLF_hispdf)), LineColor(colors[ttccLF]));
+
+    if (nModel == "RttccFree"){
+      model->plotOn(CSV2_f, Components(RooArgSet(*ttcc_hispdf)), LineColor(colors[ttcc]), RooFit::Name("CSV2_f_ttcc"));
+      model->plotOn(CSV2_f, Components(RooArgSet(*ttLF_hispdf)), LineColor(colors[ttLF]), RooFit::Name("CSV2_f_ttLF"));
+      model->plotOn(CSV3_f, Components(RooArgSet(*ttcc_hispdf)), LineColor(colors[ttcc]));
+      model->plotOn(CSV3_f, Components(RooArgSet(*ttLF_hispdf)), LineColor(colors[ttLF]));
+    }
+    else{
+      model->plotOn(CSV2_f, Components(RooArgSet(*ttccLF_hispdf)), LineColor(colors[ttccLF]), RooFit::Name("CSV2_f_ttccLF"));
+      model->plotOn(CSV3_f, Components(RooArgSet(*ttccLF_hispdf)), LineColor(colors[ttccLF]));
+    }
+
 
     model->plotOn(CSV2_f, Components(RooArgSet(*Bkgtt_hispdf)),    LineColor(colors[Bkgtt]),    LineStyle(kDashed), RooFit::Name("CSV2_f_Bkgtt"));
     model->plotOn(CSV2_f, Components(RooArgSet(*BkgOther_hispdf)), LineColor(colors[BkgOther]), LineStyle(kDashed), RooFit::Name("CSV2_f_BkgOther"));
-
     model->plotOn(CSV3_f, Components(RooArgSet(*Bkgtt_hispdf)),    LineColor(colors[Bkgtt]),    LineStyle(kDashed));
     model->plotOn(CSV3_f, Components(RooArgSet(*BkgOther_hispdf)), LineColor(colors[BkgOther]), LineStyle(kDashed));
 
+
+    model->fitTo(*data_his);
+    
     // Plot I and II
     RooPlot *CSV2Data_f = CSV2->frame();
     RooPlot *CSV3Data_f = CSV3->frame();
@@ -235,7 +265,11 @@ void roo2Dfit(TString SystVar = "", TString nModel = "RttbCon"){
 
     model->plotOn(CSV2Datattbb_f, Components(RooArgSet(*ttbb_hispdf)), LineColor(colors[ttbb]), RooFit::Name("CSV2Datattbb_f_Fitttbb"));
     model->plotOn(CSV3Datattbb_f, Components(RooArgSet(*ttbb_hispdf)), LineColor(colors[ttbb]));
-
+    
+    if (nModel == "RttccFree"){
+      model->plotOn(CSV2Datattbb_f, Components(RooArgSet(*ttcc_hispdf)), LineColor(colors[ttcc]), RooFit::Name("CSV2Datattbb_f_Fitttcc"));
+      model->plotOn(CSV3Datattbb_f, Components(RooArgSet(*ttcc_hispdf)), LineColor(colors[ttcc]));
+    }
     // Parameters
     RooArgSet *params = model->getVariables();
     params->Print("v");
@@ -270,8 +304,8 @@ void roo2Dfit(TString SystVar = "", TString nModel = "RttbCon"){
     //acc_Ratiobbjj[2] = 0.275/0.320; 
     acc_Ratiobbjj[2] = 0.094428/0.109935; // Includes ttjj events in all channels
 
-    float ratio_ttbb_Vis       = ratio_ttbb_pf * eff_Ratiobbjj[ch];
-    float ratio_ttbb_Vis_error = ratio_ttbb_pf * eff_Ratiobbjj[ch] * (ratio_ttbb_pf_error/ratio_ttbb_pf);
+    float ratio_ttbb_Vis        = ratio_ttbb_pf  * eff_Ratiobbjj[ch];
+    float ratio_ttbb_Vis_error  = ratio_ttbb_pf  * eff_Ratiobbjj[ch] * (ratio_ttbb_pf_error/ratio_ttbb_pf);
     float ratio_ttbb_Full       = ratio_ttbb_Vis * acc_Ratiobbjj[ch];
     float ratio_ttbb_Full_error = ratio_ttbb_Vis * acc_Ratiobbjj[ch] * (ratio_ttbb_Vis_error/ratio_ttbb_Vis);
 
@@ -282,22 +316,26 @@ void roo2Dfit(TString SystVar = "", TString nModel = "RttbCon"){
     /***********************
             Plots
     ***********************/    
-    legCSV2Tot_f = new TLegend(0.2,0.7,0.48,0.9);
+    TLegend *legCSV2Tot_f = new TLegend(0.2,0.7,0.48,0.9);
     legCSV2Tot_f->AddEntry(CSV2Tot_f->findObject("CSV2Tot_f_ttjj"),"t#bar{t}jj","l");
     legCSV2Tot_f->AddEntry(CSV2Tot_f->findObject("CSV2Tot_f_BkgFull"),"Bkg","l");
     
     canvas_comp->cd(1);
     CSV2Tot_f->Draw();
-    CSV2Tot_f->SetMaximum(80);
+    CSV2Tot_f->SetMaximum(70);
     legCSV2Tot_f->Draw("SAME");
 
     canvas_comp->cd(2);
     CSV3Tot_f->Draw();
 
-    legCSV2_f = new TLegend(0.2,0.7,0.48,0.9);
+    TLegend *legCSV2_f = new TLegend(0.2,0.7,0.48,0.9);
     legCSV2_f->AddEntry(CSV2_f->findObject("CSV2_f_ttbb"),    "t#bar{t}b#bar{b}","l");
     legCSV2_f->AddEntry(CSV2_f->findObject("CSV2_f_ttb"),     "t#bar{t}bj","l");
-    legCSV2_f->AddEntry(CSV2_f->findObject("CSV2_f_ttccLF"),  "t#bar{t}c#bar{c} + t#bar{t}LF","l");
+    if(nModel == "RttccFree"){
+      legCSV2_f->AddEntry(CSV2_f->findObject("CSV2_f_ttcc"),  "t#bar{t}c#bar{c}","l");
+      legCSV2_f->AddEntry(CSV2_f->findObject("CSV2_f_ttLF"),  "t#bar{t}LF","l");
+    }
+    else legCSV2_f->AddEntry(CSV2_f->findObject("CSV2_f_ttccLF"),  "t#bar{t}c#bar{c} + t#bar{t}LF","l");
     legCSV2_f->AddEntry(CSV2_f->findObject("CSV2_f_Bkgtt"),   "t#bar{t} Bkg","l");
     legCSV2_f->AddEntry(CSV2_f->findObject("CSV2_f_BkgOther"),"Other Bkg","l");
 
@@ -315,7 +353,7 @@ void roo2Dfit(TString SystVar = "", TString nModel = "RttbCon"){
     CSV3_f->Draw();
 
 
-    legCSV2Data_f = new TLegend(0.2,0.7,0.48,0.9);
+    TLegend *legCSV2Data_f = new TLegend(0.2,0.7,0.48,0.9);
     legCSV2Data_f->AddEntry(CSV2Data_f->findObject("CSV2Data_f_Data"),"Data","lp");
     legCSV2Data_f->AddEntry((TObject*)0,"FIT:","");
     legCSV2Data_f->AddEntry(CSV2Data_f->findObject("CSV2Data_f_Fit"),"Total","l");
@@ -331,11 +369,12 @@ void roo2Dfit(TString SystVar = "", TString nModel = "RttbCon"){
     canvas_data->cd(2);
     CSV3Data_f->Draw();
     
-    legCSV2Datattbb_f = new TLegend(0.2,0.7,0.48,0.9);
+    TLegend *legCSV2Datattbb_f = new TLegend(0.2,0.7,0.48,0.9);
     legCSV2Datattbb_f->AddEntry(CSV2Datattbb_f->findObject("CSV2Datattbb_f_Data"),"Data","lp");
     legCSV2Datattbb_f->AddEntry((TObject*)0,"FIT:","");
     legCSV2Datattbb_f->AddEntry(CSV2Datattbb_f->findObject("CSV2Datattbb_f_Fit"),"Total","l");
     legCSV2Datattbb_f->AddEntry(CSV2Datattbb_f->findObject("CSV2Datattbb_f_Fitttbb"),"t#bar{t}b#bar{b}","l");
+    if (nModel == "RttccFree") legCSV2Datattbb_f->AddEntry(CSV2Datattbb_f->findObject("CSV2Datattbb_f_Fitttcc"),"t#bar{t}c#bar{c}","l");
 
     canvas_data->cd(3);
     canvas_data->cd(3)->SetLogy();
